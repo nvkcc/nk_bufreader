@@ -71,25 +71,25 @@ TEST(BufRead, Counting) {
 }
 
 TEST(BufRead, BufferTooSmall) {
-    PIPE_SETUP(5, "aaa\nbbbb\nccccc");
+    PIPE_SETUP(5, "aa\nbbb\ncccc");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "aaa");
+    ASSERT_STREQ2(br.buf, "aa");
     ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
     ASSERT_STREQ2(br.buf, "");
     ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INVALID);
 }
 
 TEST(BufRead, BufferExactlyEnough) {
-    PIPE_SETUP(7, "adieu\nocean\nsoare");
+    PIPE_SETUP(8, "adieu\nocean\nsoare");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "adieu");
     ASSERT_EQ(br.buf[5], '\0');
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "ocean");
     ASSERT_EQ(br.buf[5], '\0');
-    ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(br.buf, "");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INVALID);
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ2(br.buf, "soare");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_ITER_OVER);
 }
 
 int main(int argc, char *argv[]) {

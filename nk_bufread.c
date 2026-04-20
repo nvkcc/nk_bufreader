@@ -67,16 +67,25 @@ inline int nk_buf_reader_append_data(nk_buf_reader *r) {
     }
 }
 
-// Recall: S := r->buf, A := r->newl, B := r->end
-// The assumption is that we've just got done consuming (externally) the data in
-// buffer[S..A]. So here's what we'll do:
-// (1.) Clear out the old data by doing memmove S <- A.
-// (2.) Look for the next newline character. If one is found, then we NUL that
-//      and return.
-// (3.) Read more data from the file.
-// (4.) Look for the next newline character.
-//      (4a.) If one is found, then we NUL that and return.
-//      (4b.) Else, the buffer is too small. Send error.
+// =============================================================================
+// The main logic
+// =============================================================================
+
+/*
+ * Recall: S := r->buf, A := r->newl, B := r->end
+ * The assumption is that we've just got done consuming (externally) the data in
+ * buffer[S..A]. So here's what we'll do:
+ * (1.) Clear out the old data by doing memmove S <- A.
+ * (2.) Look for the next newline character. If one is found, then we NUL that
+ *      and return.
+ * (3.) Read more data from the file.
+ * (4.) Look for the next newline character.
+ *      (4a.) If one is found, then we NUL that and return.
+ *      (4b.) Else, the buffer is too small. Send error.
+ */
+
+//
+
 int nk_buf_reader_next(nk_buf_reader *r) {
     if (!r->end) {
         return NK_BUFREAD_INVALID;
@@ -86,8 +95,6 @@ int nk_buf_reader_next(nk_buf_reader *r) {
     }
     int n;
 
-    nklog_trace("Call next()");
-    debug_print(r);
     // (1.)
     nk_buf_reader_memmove(r);
     nklog_trace("Call memmove():");
@@ -108,10 +115,10 @@ int nk_buf_reader_next(nk_buf_reader *r) {
                 VALID_LEN(r));
     if ((n = nk_buf_reader_append_data(r)) <= 0) {
         if (r->end == r->buf) {
-            nklog_trace("\x1b[31mReturn\x1b[m {#5}");
+            nklog_trace("\x1b[31mReturn\x1b[m {#2}");
             return NK_BUFREAD_ITER_OVER;
         }
-        nklog_trace("\x1b[31mReturn\x1b[m {#2}");
+        nklog_trace("\x1b[31mReturn\x1b[m {#3}");
         return n;
     }
     debug_print(r);
@@ -122,17 +129,22 @@ int nk_buf_reader_next(nk_buf_reader *r) {
     r->newl = (char *)memchr(r->buf, '\n', sizeof(char) * VALID_LEN(r));
     debug_print(r);
     if (r->newl) {
+        if (r->newl + 2 == r->buf + r->len) {
+            *r->buf = '\0';
+            r->end = NULL;
+            nklog_trace("\x1b[31mReturn\x1b[m {#4}");
+            return NK_BUFREAD_INSUFFICIENT_SPACE;
+        }
         *r->newl = '\0';
-        nklog_trace("\x1b[31mReturn\x1b[m {#3}");
+        nklog_trace("\x1b[31mReturn\x1b[m {#5}");
         return NK_BUFREAD_OK;
     } else if (VALID_LEN(r) + 1 >= r->len) {
-        nklog_trace("\x1b[31mReturn\x1b[m {#4}");
         *r->buf = '\0';
         r->end = NULL;
+        nklog_trace("\x1b[31mReturn\x1b[m {#6}");
         return NK_BUFREAD_INSUFFICIENT_SPACE;
     }
-    nklog_trace("\x1b[31mReturn\x1b[m {#6}");
-    debug_print(r);
+    nklog_trace("\x1b[31mReturn\x1b[m {#7}");
     return NK_BUFREAD_OK;
 }
 
