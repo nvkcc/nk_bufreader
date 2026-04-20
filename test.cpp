@@ -57,7 +57,6 @@ TEST(BufRead, ABCs) {
 }
 
 TEST(BufRead, Counting) {
-    GTEST_SKIP();
     PIPE_SETUP(10, "one\ntwo\nthree");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "one");
