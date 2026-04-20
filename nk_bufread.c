@@ -2,6 +2,7 @@
 
 #include <nk_log.h>
 
+#include <stdio.h>
 #include <string.h>
 
 /// Invalidates the entire buffer, ready to use as a fresh read buffer.
@@ -13,9 +14,13 @@ inline void nk_buf_reader_clear(nk_buf_reader *r) {
     }
 }
 
-void nk_buf_reader_init(nk_buf_reader *r) { nk_buf_reader_clear(r); }
+void nk_buf_reader_init(nk_buf_reader *r) {
+    r->newl = r->end = r->buf;
+    // Set the last byte to NUL to prevent any case of overflow by string
+    // reading. We shall never touch this byte again.
+    *(r->buf + r->len - 1) = '\0';
+}
 
-#include <stdio.h>
 void debug_print(nk_buf_reader *r) {
     fprintf(stderr, "inner [");
     int i;
@@ -25,7 +30,7 @@ void debug_print(nk_buf_reader *r) {
             fprintf(stderr, ", ");
         }
     }
-    fprintf(stderr, "] (%s)\n", r->buf);
+    fprintf(stderr, "]\n");
 }
 
 inline int nk_buf_reader_bytes_to_read(nk_buf_reader *r) {
@@ -70,7 +75,7 @@ int nk_buf_reader_read_data(nk_buf_reader *r) {
     return NK_BUFREAD_OK;
 }
 
-int nk_buf_reader_next(nk_buf_reader *r) {
+int nk_buf_reader_next_(nk_buf_reader *r) {
     nklog_trace("Called next()");
     int n, err;
 
@@ -113,8 +118,8 @@ int nk_buf_reader_next(nk_buf_reader *r) {
 
     debug_print(r);
 
-    r->newl = (char *)memchr(r->buf, '\n',
-                             sizeof(char) * (r->end - r->buf + 1));
+    r->newl =
+        (char *)memchr(r->buf, '\n', sizeof(char) * (r->end - r->buf + 1));
     if (r->newl) {
         nklog_info("Newline found");
         *r->newl = '\0';
@@ -127,4 +132,52 @@ int nk_buf_reader_next(nk_buf_reader *r) {
         // contain the longest line.
         return NK_BUFREAD_INSUFFICIENT_SPACE;
     }
+}
+
+/// Shifts `r->newl` to `r->buf` and updates `r->end` to remain correct.
+void nk_buf_reader_memmove(nk_buf_reader *r) {
+    if (r->newl == r->buf) {
+        return;
+    }
+    // +1 to skip the newline character.
+    int diff = r->newl + 1 - r->buf;
+    memmove(r->buf, r->newl + 1, r->len - diff);
+    r->end -= diff;
+}
+
+/// Appends data to `r->end`. Works as long the position of `r->end` is valid.
+inline int nk_buf_reader_append_data(nk_buf_reader *r) {
+    return read(r->fd, r->end, nk_buf_reader_bytes_to_read(r));
+}
+
+int nk_buf_reader_next(nk_buf_reader *r) {
+    // Recall:
+    //   S := r->buf
+    //   A := r->newl
+    //   B := r->end
+
+    nklog_trace("Call next()");
+    debug_print(r);
+    // 1. memmove S <- A
+    // 2. Update B's address based on the memmove.
+    nk_buf_reader_memmove(r);
+
+    // 3. Read new data.
+    int n = nk_buf_reader_append_data(r);
+    switch (n) {
+    case 0: // No bytes were read, and end of file is reached.
+        return 0;
+    case -1: // An error occured in `read()`. See the `errno` variable.
+        return NK_BUFREAD_IO_ERROR;
+    default: // Successful read.
+        r->end += n;
+    }
+    // 4. Set the first newline to NUL byte, if found. Otherwise, it's okay,
+    // since the last byte in the buffer will catch anyway.
+
+    r->newl = (char *)memchr(r->buf, '\n', r->end - r->buf);
+    if (!r->newl) {
+        r->newl = r->buf + r->len - 1;
+    }
+    return 0;
 }

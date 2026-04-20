@@ -1,25 +1,40 @@
 #ifndef _NK_BUFREAD_H
 #define _NK_BUFREAD_H 1
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/// A buffered reader that reads up until the newline character. The buffer must
-/// be two bytes longer than the longest line to be read, since we guarantee
-/// that the buffer always contains the NUL byte. So one byte for the newline
-/// char, and one byte for the NUL byte.
+/// A buffered reader that reads line by line (delimited by '\n'). The buffer
+/// must be two bytes longer than the longest line to be read, since we
+/// guarantee that the buffer always contains the NUL byte. So one byte for the
+/// delimiter, and one byte for the NUL byte.
 ///
-/// NOTE: after initializing with {.buf = ...}, please call `nk_buf_reader_init`
-/// on the object initialize a valid state before doing any other operations.
+/// Please call `nk_buf_reader_init` on the object initialize a valid state
+/// before doing any other operations.
+///
+/// Using a `len` of 0 results in undefined behaviour.
+///
 /// This struct does not own any data so it need not be freed.
 typedef struct nk_buf_reader {
+    /** [Internal Notes]
+     * The buffer is split into 3 sections, by 3 pointers. A: `*buf`, B:
+     * `*newl`, and C: `*end`. Now, imagine we're in Rust. The slice
+     * buffer[A..B] is the part to be consumed externally. Hence, buffer[B]
+     * should always be set to the NUL byte before being exposed. Then, [B..C]
+     * contains buffered data that will be consumed next. And finally [C..] is
+     * invalid data.
+     */
+
     /// File descriptor to read from.
     const int fd;
+    /// Byte buffer length. This is assumed to be greater than zero, otherwise
+    /// we have UB.
+    const unsigned int len;
     /// Byte buffer.
     char *const buf;
-    /// Byte buffer length.
-    const int len;
     /// Points to the first newline in the buffer. The _only_ time that this is
     /// NULL is right after initialization.
     char *newl;
