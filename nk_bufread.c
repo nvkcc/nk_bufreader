@@ -172,6 +172,8 @@ inline int nk_buf_reader_append_data(nk_buf_reader *r) {
 //      (4a.) If one is found, then we NUL that and return.
 //      (4b.) Else, set B to the second-last value, and return.
 int nk_buf_reader_next(nk_buf_reader *r) {
+    int n;
+
     nklog_trace("Call next()");
     debug_print(r);
     // (1.)
@@ -180,30 +182,40 @@ int nk_buf_reader_next(nk_buf_reader *r) {
     debug_print(r);
 
     // (2.)
-    r->newl = (char *)memchr(r->buf, '\n', VALID_LEN(r));
+    r->newl = (char *)memchr(r->buf, '\n', sizeof(char) * VALID_LEN(r));
     if (r->newl) {
         *r->newl = '\0';
+        nklog_trace("\x1b[31mReturn\x1b[m {#1}");
         return NK_BUFREAD_OK;
     }
-    nklog_trace("Call memchr('\\n'):");
+    nklog_trace("\x1b[33m1st\x1b[m memchr('\\n', v.len=%d):", VALID_LEN(r));
     debug_print(r);
 
     // (3.)
-    int n = nk_buf_reader_append_data(r);
-    if (n <= 0) {
+    nklog_trace("Call read(%d) at [%d]", nk_buf_reader_bytes_to_read(r),
+                VALID_LEN(r));
+    if ((n = nk_buf_reader_append_data(r)) <= 0) {
+        if (r->end == r->buf) {
+            nklog_trace("\x1b[31mReturn\x1b[m {#5}");
+            return NK_BUFREAD_ITER_OVER;
+        }
+        nklog_trace("\x1b[31mReturn\x1b[m {#2}");
         return n;
     }
-    nklog_trace("Call read()");
     debug_print(r);
+    nklog_trace("read() returned %d", n);
 
     // (4.)
-
-    r->newl = (char *)memchr(r->buf, '\n', VALID_LEN(r));
+    nklog_trace("\x1b[34m2nd\x1b[m memchr('\\n', v.len=%d):", VALID_LEN(r));
+    r->newl = (char *)memchr(r->buf, '\n', sizeof(char) * VALID_LEN(r));
+    debug_print(r);
     if (r->newl) {
         *r->newl = '\0';
+        nklog_trace("\x1b[31mReturn\x1b[m {#3}");
         return NK_BUFREAD_OK;
     } else {
         r->newl = r->end - 1;
+        nklog_trace("\x1b[31mReturn\x1b[m {#4}");
         return NK_BUFREAD_OK;
     }
 }

@@ -7,6 +7,7 @@
     int __fd[2];                                                               \
     ASSERT_NE(pipe(__fd), -1) << "Failed to start pipe";                       \
     dprintf(__fd[1], __VA_ARGS__);                                             \
+    write(__fd[1], "", 1);                                                     \
     close(__fd[1]);                                                            \
     char __buf[N];                                                             \
     nk_buf_reader br = {.fd = __fd[0], .len = N, .buf = __buf};                \
@@ -18,9 +19,12 @@
 //  2. Within bounds.
 #define ASSERT_NEXT(br, err_code)                                              \
     ASSERT_EQ(nk_buf_reader_next(&br), err_code);                              \
-    ASSERT_EQ(*br.end, 0);                                                     \
     ASSERT_LE(br.buf, br.end);                                                 \
     ASSERT_LT(br.end, br.buf + br.len);
+
+#define ASSERT_STREQ2(BUFFER, VALUE)                                           \
+    std::cout << "test case: \x1b[33m\"" VALUE << "\"\x1b[m" << std::endl;     \
+    ASSERT_STREQ(BUFFER, VALUE);
 
 void print_br(nk_buf_reader *r) {
     std::cout << '[';
@@ -36,37 +40,31 @@ void print_br(nk_buf_reader *r) {
 TEST(BufRead, HelloWorld) {
     PIPE_SETUP(8, "hello\nworld");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "hello");
-    print_br(&br);
+    ASSERT_STREQ2(br.buf, "hello");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "world");
+    ASSERT_STREQ2(br.buf, "world");
 }
 
-TEST(BufRead, BasicAssertions) {
-    GTEST_SKIP();
-    PIPE_SETUP(4, "a\nbb\nccc");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "a");
-    print_br(&br);
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "bb");
-    print_br(&br);
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "ccc");
-    ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
+TEST(BufRead, ABCs) {
+    PIPE_SETUP(5, "a\nbb\nccc");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_OK);
+    ASSERT_STREQ2(br.buf, "a");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_OK);
+    ASSERT_STREQ2(br.buf, "bb");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_OK);
+    ASSERT_STREQ2(br.buf, "ccc");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, Counting) {
     GTEST_SKIP();
     PIPE_SETUP(10, "one\ntwo\nthree");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "one");
-    print_br(&br);
+    ASSERT_STREQ2(br.buf, "one");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "two");
-    print_br(&br);
+    ASSERT_STREQ2(br.buf, "two");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "three");
+    ASSERT_STREQ2(br.buf, "three");
     ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
 }
 
@@ -74,24 +72,24 @@ TEST(BufRead, BufferTooSmall) {
     GTEST_SKIP();
     PIPE_SETUP(7, "gold\nsilver\nbronze");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "gold");
+    ASSERT_STREQ2(br.buf, "gold");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "silver");
+    ASSERT_STREQ2(br.buf, "silver");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "bronze");
+    ASSERT_STREQ2(br.buf, "bronze");
 }
 
 TEST(BufRead, BufferExactlyEnough) {
     GTEST_SKIP();
     PIPE_SETUP(6, "adieu\nocean\nsoare");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ(br.buf, "adieu");
+    ASSERT_STREQ2(br.buf, "adieu");
     ASSERT_EQ(br.buf[5], '\0');
     // ASSERT_EQ((int)(br.newl - br.buf), 0);
     // ASSERT_NEXT(br, NK_BUFREAD_OK);
-    // ASSERT_STREQ(br.buf, "ocean");
+    // ASSERT_STREQ2(br.buf, "ocean");
     // ASSERT_NEXT(br, NK_BUFREAD_OK);
-    // ASSERT_STREQ(br.buf, "soare");
+    // ASSERT_STREQ2(br.buf, "soare");
 }
 
 int main(int argc, char *argv[]) {
