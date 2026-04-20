@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define VALID_LEN(r) (r->end - r->buf)
+
 /// Invalidates the entire buffer, ready to use as a fresh read buffer.
 inline void nk_buf_reader_clear(nk_buf_reader *r) {
     r->newl = NULL;
@@ -30,7 +32,8 @@ void debug_print(nk_buf_reader *r) {
             fprintf(stderr, ", ");
         }
     }
-    fprintf(stderr, "]\n");
+    fprintf(stderr, "] (0, %d, %d)\n", r->newl ? (int)(r->newl - r->buf) : -1,
+            (int)VALID_LEN(r));
 }
 
 inline int nk_buf_reader_bytes_to_read(nk_buf_reader *r) {
@@ -40,7 +43,7 @@ inline int nk_buf_reader_bytes_to_read(nk_buf_reader *r) {
     // byte.
     //
     // That arithmetic, 9 = 16 - 6 - 1, leads us here:
-    return r->len - (r->end - r->buf) - 1;
+    return r->len - VALID_LEN(r) - 1;
 
     // Note that this function returns 0 if and only if `end` points to
     // index 15 in the above scenario, which is when it is the last address in
@@ -118,8 +121,7 @@ int nk_buf_reader_next_(nk_buf_reader *r) {
 
     debug_print(r);
 
-    r->newl =
-        (char *)memchr(r->buf, '\n', sizeof(char) * (r->end - r->buf + 1));
+    r->newl = (char *)memchr(r->buf, '\n', sizeof(char) * VALID_LEN(r));
     if (r->newl) {
         nklog_info("Newline found");
         *r->newl = '\0';
@@ -147,23 +149,7 @@ void nk_buf_reader_memmove(nk_buf_reader *r) {
 
 /// Appends data to `r->end`. Works as long the position of `r->end` is valid.
 inline int nk_buf_reader_append_data(nk_buf_reader *r) {
-    return read(r->fd, r->end, nk_buf_reader_bytes_to_read(r));
-}
-
-int nk_buf_reader_next(nk_buf_reader *r) {
-    // Recall:
-    //   S := r->buf
-    //   A := r->newl
-    //   B := r->end
-
-    nklog_trace("Call next()");
-    debug_print(r);
-    // 1. memmove S <- A
-    // 2. Update B's address based on the memmove.
-    nk_buf_reader_memmove(r);
-
-    // 3. Read new data.
-    int n = nk_buf_reader_append_data(r);
+    int n = read(r->fd, r->end, nk_buf_reader_bytes_to_read(r));
     switch (n) {
     case 0: // No bytes were read, and end of file is reached.
         return 0;
@@ -171,13 +157,55 @@ int nk_buf_reader_next(nk_buf_reader *r) {
         return NK_BUFREAD_IO_ERROR;
     default: // Successful read.
         r->end += n;
+        return n;
     }
-    // 4. Set the first newline to NUL byte, if found. Otherwise, it's okay,
-    // since the last byte in the buffer will catch anyway.
-
-    r->newl = (char *)memchr(r->buf, '\n', r->end - r->buf);
-    if (!r->newl) {
-        r->newl = r->buf + r->len - 1;
-    }
-    return 0;
 }
+
+// Recall: S := r->buf, A := r->newl, B := r->end
+// The assumption is that we've just got done consuming (externally) the data in
+// buffer[S..A]. So here's what we'll do:
+// (1.) Clear out the old data by doing memmove S <- A.
+// (2.) Look for the next newline character. If one is found, then we NUL that
+//      and return.
+// (3.) Read more data from the file.
+// (4.) Look for the next newline character.
+//      (4a.) If one is found, then we NUL that and return.
+//      (4b.) Else, set B to the second-last value, and return.
+int nk_buf_reader_next(nk_buf_reader *r) {
+    nklog_trace("Call next()");
+    debug_print(r);
+    // (1.)
+    nk_buf_reader_memmove(r);
+    nklog_trace("Call memmove():");
+    debug_print(r);
+
+    // (2.)
+    r->newl = (char *)memchr(r->buf, '\n', VALID_LEN(r));
+    if (r->newl) {
+        *r->newl = '\0';
+        return NK_BUFREAD_OK;
+    }
+    nklog_trace("Call memchr('\\n'):");
+    debug_print(r);
+
+    // (3.)
+    int n = nk_buf_reader_append_data(r);
+    if (n <= 0) {
+        return n;
+    }
+    nklog_trace("Call read()");
+    debug_print(r);
+
+    // (4.)
+
+    r->newl = (char *)memchr(r->buf, '\n', VALID_LEN(r));
+    if (r->newl) {
+        *r->newl = '\0';
+        return NK_BUFREAD_OK;
+    } else {
+        r->newl = r->end - 1;
+        return NK_BUFREAD_OK;
+    }
+}
+
+#undef VALID_LEN
