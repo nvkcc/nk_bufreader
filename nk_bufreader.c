@@ -1,13 +1,12 @@
-#include "nk_bufread.h"
+#include "nk_bufreader.h"
 
 #include <nk_log.h>
 
-#include <stdio.h>
 #include <string.h>
 
 #define VALID_LEN(r) (r->end - r->buf)
 
-void nk_buf_reader_init(nk_buf_reader *r) {
+void nk_bufreader_init(nk_bufreader *r) {
     // Initialize all three pointers to be the same.
     r->newl = r->end = r->buf;
     // Set the last byte to NUL to prevent any case of overflow by string
@@ -15,20 +14,29 @@ void nk_buf_reader_init(nk_buf_reader *r) {
     *(r->buf + r->len - 1) = '\0';
 }
 
-void debug_print(nk_buf_reader *r) {
-    fprintf(stderr, "inner [");
-    int i;
-    for (i = 0; i < r->len; ++i) {
-        fprintf(stderr, "%d", r->buf[i]);
-        if (i + 1 < r->len) {
-            fprintf(stderr, ", ");
-        }
+// Uncomment this line only in development. Remove it in production.
+// #define NK_BUFREAD_DEBUG_PRINT
+#ifdef NK_BUFREAD_DEBUG_PRINT
+#include <stdio.h>
+#define debug_print(r)                                                         \
+    {                                                                          \
+        fprintf(stderr, "inner [");                                            \
+        int i;                                                                 \
+        for (i = 0; i < r->len; ++i) {                                         \
+            fprintf(stderr, "%d", r->buf[i]);                                  \
+            if (i + 1 < r->len) {                                              \
+                fprintf(stderr, ", ");                                         \
+            }                                                                  \
+        }                                                                      \
+        fprintf(stderr,                                                        \
+                "] (newl=\x1b[33m%d\x1b[m, valid_len=\x1b[32m%d\x1b[m)\n",     \
+                r->newl ? (int)(r->newl - r->buf) : -1, (int)VALID_LEN(r));    \
     }
-    fprintf(stderr, "] (newl=\x1b[33m%d\x1b[m, valid_len=\x1b[32m%d\x1b[m)\n",
-            r->newl ? (int)(r->newl - r->buf) : -1, (int)VALID_LEN(r));
-}
+#else
+#define debug_print(r)
+#endif
 
-inline int nk_buf_reader_bytes_to_read(nk_buf_reader *r) {
+inline int nk_bufreader_bytes_to_read(nk_bufreader *r) {
     //  0   1   2   3   4   5   6   7   8   9
     // Consider a buffer of length 10, and the `end` points to index 4 (i.e.: a
     // VALID_LEN of 4). Then we can only afford to read 5 bytes (the 5 being
@@ -43,7 +51,7 @@ inline int nk_buf_reader_bytes_to_read(nk_buf_reader *r) {
 }
 
 /// Shifts `r->newl` to `r->buf` and updates `r->end` to remain correct.
-void nk_buf_reader_memmove(nk_buf_reader *r) {
+void nk_bufreader_memmove(nk_bufreader *r) {
     if (r->newl == r->buf) {
         return;
     }
@@ -54,8 +62,8 @@ void nk_buf_reader_memmove(nk_buf_reader *r) {
 }
 
 /// Appends data to `r->end`. Works as long the position of `r->end` is valid.
-inline int nk_buf_reader_append_data(nk_buf_reader *r) {
-    int n = read(r->fd, r->end, nk_buf_reader_bytes_to_read(r));
+inline int nk_bufreader_append_data(nk_bufreader *r) {
+    int n = read(r->fd, r->end, nk_bufreader_bytes_to_read(r));
     switch (n) {
     case 0: // No bytes were read, and end of file is reached.
         return 0;
@@ -86,7 +94,7 @@ inline int nk_buf_reader_append_data(nk_buf_reader *r) {
 
 //
 
-int nk_buf_reader_next(nk_buf_reader *r) {
+int nk_bufreader_next(nk_bufreader *r) {
     if (!r->end) {
         return NK_BUFREAD_INVALID;
     }
@@ -96,7 +104,7 @@ int nk_buf_reader_next(nk_buf_reader *r) {
     int n;
 
     // (1.)
-    nk_buf_reader_memmove(r);
+    nk_bufreader_memmove(r);
     nklog_trace("Call memmove():");
     debug_print(r);
 
@@ -111,9 +119,9 @@ int nk_buf_reader_next(nk_buf_reader *r) {
     debug_print(r);
 
     // (3.)
-    nklog_trace("Call read(%d) at [%d]", nk_buf_reader_bytes_to_read(r),
+    nklog_trace("Call read(%d) at [%d]", nk_bufreader_bytes_to_read(r),
                 VALID_LEN(r));
-    if ((n = nk_buf_reader_append_data(r)) <= 0) {
+    if ((n = nk_bufreader_append_data(r)) <= 0) {
         if (r->end == r->buf) {
             nklog_trace("\x1b[31mReturn\x1b[m {#2}");
             return NK_BUFREAD_ITER_OVER;

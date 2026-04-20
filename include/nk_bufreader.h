@@ -12,14 +12,14 @@ extern "C" {
 /// guarantee that the buffer always contains the NUL byte. So one byte for the
 /// delimiter, and one byte for the NUL byte.
 ///
-/// Please call `nk_buf_reader_init` on the object initialize a valid state
+/// Please call `nk_bufreader_init` on the object initialize a valid state
 /// before doing any other operations.
 ///
 /// Using a `len` of 0 results in undefined behavior. Using an invalid address
 /// for `buf` also is undefined behavior.
 ///
 /// This struct does not own any data so it need not be freed.
-typedef struct nk_buf_reader {
+typedef struct nk_bufreader {
     /** [Internal Notes]
      * The buffer is split into 3 sections, by 3 pointers. A: `*buf`, B:
      * `*newl`, and C: `*end`. Now, imagine we're in Rust. The slice
@@ -44,7 +44,7 @@ typedef struct nk_buf_reader {
     /// memory. Should always be set to the NUL byte. Also the address that
     /// `read()` starts sending data to.
     char *end;
-} nk_buf_reader;
+} nk_bufreader;
 
 typedef enum {
     /**
@@ -62,16 +62,16 @@ typedef enum {
      */
     NK_BUFREAD_INSUFFICIENT_SPACE = 2,
     /**
-     * The `nk_buf_reader` has reached the end of iteration safely.
+     * The `nk_bufreader` has reached the end of iteration safely.
      */
     NK_BUFREAD_ITER_OVER = 3,
     /**
-     * Tried running a method on an invalid state of nk_buf_reader.
+     * Tried running a method on an invalid state of nk_bufreader.
      */
     NK_BUFREAD_INVALID = 4,
-} nk_buf_reader_error_code;
+} nk_bufreader_error_code;
 
-void nk_buf_reader_init(nk_buf_reader *);
+void nk_bufreader_init(nk_bufreader *);
 
 /// Assumes that everything from the front of `r.buf` until the first newline
 /// (the whole buffer, if there is no newline) is already consumed and hence can
@@ -83,7 +83,7 @@ void nk_buf_reader_init(nk_buf_reader *);
 /// Returns 0 upon success, and -1 if any error is encountered (including
 /// reaching end of file). `errno` would be set as per the result of the call to
 /// `read`.
-int nk_buf_reader_next(nk_buf_reader *r);
+int nk_bufreader_next(nk_bufreader *r);
 
 #ifdef __cplusplus
 }

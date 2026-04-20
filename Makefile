@@ -12,4 +12,4 @@ build:
 	cmake --build $(BUILD_DIR)
 
 test: build
-	$(BUILD_DIR)/nk_bufread-test
+	$(BUILD_DIR)/nk_bufreader-test

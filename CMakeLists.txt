@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(nk_bufread LANGUAGES C CXX)
+project(nk_bufreader LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 90)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -16,12 +16,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nk_log)
 
-set(NK_BUFREAD_SOURCES
-  nk_bufread.c
-)
-add_library(nk_bufread ${NK_BUFREAD_SOURCES})
-target_include_directories(nk_bufread PRIVATE include/)
-target_link_libraries(nk_bufread PRIVATE nk_log)
+add_library(nk_bufreader nk_bufreader.c)
+target_include_directories(nk_bufreader PRIVATE include/)
+target_link_libraries(nk_bufreader PRIVATE nk_log)
 
 if(BUILD_TESTS)
   FetchContent_Declare(
@@ -32,10 +29,10 @@ if(BUILD_TESTS)
   )
   FetchContent_MakeAvailable(nk_test)
   set(log_level TRACE)
-  add_executable(nk_bufread-test ${NK_BUFREAD_SOURCES} test.cpp)
-  target_compile_definitions(nk_bufread-test PRIVATE NK_LOG_LEVEL=nk${log_level})
-  target_include_directories(nk_bufread-test PRIVATE include/)
-  target_link_libraries(nk_bufread-test PRIVATE nk_log nk_test)
+  add_executable(nk_bufreader-test nk_bufreader.c test.cpp)
+  target_compile_definitions(nk_bufreader-test PRIVATE NK_LOG_LEVEL=nk${log_level})
+  target_include_directories(nk_bufreader-test PRIVATE include/)
+  target_link_libraries(nk_bufreader-test PRIVATE nk_log nk_test)
 endif()
 
 # Create compile_commands.json for clangd to latch on to.

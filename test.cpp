@@ -1,7 +1,7 @@
 #include <nk_test_printer.h>
 #include <unistd.h>
 
-#include "nk_bufread.h"
+#include "nk_bufreader.h"
 
 #define PIPE_SETUP(N, ...)                                                     \
     int __fd[2];                                                               \
@@ -10,15 +10,15 @@
     write(__fd[1], "", 1);                                                     \
     close(__fd[1]);                                                            \
     char __buf[N];                                                             \
-    nk_buf_reader br = {.fd = __fd[0], .len = N, .buf = __buf};                \
-    nk_buf_reader_init(&br);
+    nk_bufreader br = {.fd = __fd[0], .len = N, .buf = __buf};                 \
+    nk_bufreader_init(&br);
 
 // Pushes forward the reader, and asserts on the error code returned.
 // Also checks that the end is
 //  1. Set to the NUL character.
 //  2. Within bounds.
 #define ASSERT_NEXT(br, err_code)                                              \
-    ASSERT_EQ(nk_buf_reader_next(&br), err_code);                              \
+    ASSERT_EQ(nk_bufreader_next(&br), err_code);                               \
     if (br.end) {                                                              \
         ASSERT_EQ(*br.end, 0);                                                 \
         ASSERT_LE(br.buf, br.end);                                             \
@@ -29,7 +29,7 @@
     std::cout << "assert eq: \x1b[33m\"" VALUE << "\"\x1b[m" << std::endl;     \
     ASSERT_STREQ(BUFFER, VALUE);
 
-void print_br(nk_buf_reader *r) {
+void print_br(nk_bufreader *r) {
     std::cout << '[';
     for (int i = 0; i < r->len; ++i) {
         std::cout << (int)(r->buf[i]);
@@ -50,13 +50,13 @@ TEST(BufRead, HelloWorld) {
 
 TEST(BufRead, ABCs) {
     PIPE_SETUP(5, "a\nbb\nccc");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_OK);
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "a");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_OK);
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "bb");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INSUFFICIENT_SPACE);
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INSUFFICIENT_SPACE);
     ASSERT_STREQ2(br.buf, "");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INVALID);
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
 }
 
 TEST(BufRead, Counting) {
@@ -76,7 +76,7 @@ TEST(BufRead, BufferTooSmall) {
     ASSERT_STREQ2(br.buf, "aa");
     ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
     ASSERT_STREQ2(br.buf, "");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INVALID);
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
 }
 
 TEST(BufRead, BufferExactlyEnough) {
@@ -89,7 +89,7 @@ TEST(BufRead, BufferExactlyEnough) {
     ASSERT_EQ(br.buf[5], '\0');
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "soare");
-    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_ITER_OVER);
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_ITER_OVER);
 }
 
 int main(int argc, char *argv[]) {
