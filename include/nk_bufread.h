@@ -15,7 +15,8 @@ extern "C" {
 /// Please call `nk_buf_reader_init` on the object initialize a valid state
 /// before doing any other operations.
 ///
-/// Using a `len` of 0 results in undefined behaviour.
+/// Using a `len` of 0 results in undefined behavior. Using an invalid address
+/// for `buf` also is undefined behavior.
 ///
 /// This struct does not own any data so it need not be freed.
 typedef struct nk_buf_reader {

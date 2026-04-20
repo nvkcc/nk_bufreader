@@ -19,9 +19,11 @@
 //  2. Within bounds.
 #define ASSERT_NEXT(br, err_code)                                              \
     ASSERT_EQ(nk_buf_reader_next(&br), err_code);                              \
-    ASSERT_EQ(*br.end, 0);                                                     \
-    ASSERT_LE(br.buf, br.end);                                                 \
-    ASSERT_LT(br.end, br.buf + br.len);
+    if (br.end) {                                                              \
+        ASSERT_EQ(*br.end, 0);                                                 \
+        ASSERT_LE(br.buf, br.end);                                             \
+        ASSERT_LT(br.end, br.buf + br.len);                                    \
+    }
 
 #define ASSERT_STREQ2(BUFFER, VALUE)                                           \
     std::cout << "assert eq: \x1b[33m\"" VALUE << "\"\x1b[m" << std::endl;     \
@@ -58,7 +60,6 @@ TEST(BufRead, ABCs) {
 }
 
 TEST(BufRead, Counting) {
-    GTEST_SKIP();
     PIPE_SETUP(10, "one\ntwo\nthree");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "one");
@@ -70,27 +71,25 @@ TEST(BufRead, Counting) {
 }
 
 TEST(BufRead, BufferTooSmall) {
-    GTEST_SKIP();
     PIPE_SETUP(5, "aaa\nbbbb\nccccc");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "aaa");
     ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(br.buf, "bbbb");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INVALID);
 }
 
 TEST(BufRead, BufferExactlyEnough) {
-    GTEST_SKIP();
-    PIPE_SETUP(6, "adieu\nocean\nsoare");
+    PIPE_SETUP(7, "adieu\nocean\nsoare");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ2(br.buf, "adieu");
     ASSERT_EQ(br.buf[5], '\0');
-    // ASSERT_EQ((int)(br.newl - br.buf), 0);
-    // ASSERT_NEXT(br, NK_BUFREAD_OK);
-    // ASSERT_STREQ2(br.buf, "ocean");
-    // ASSERT_NEXT(br, NK_BUFREAD_OK);
-    // ASSERT_STREQ2(br.buf, "soare");
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ2(br.buf, "ocean");
+    ASSERT_EQ(br.buf[5], '\0');
+    ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
+    ASSERT_STREQ2(br.buf, "");
+    ASSERT_EQ(nk_buf_reader_next(&br), NK_BUFREAD_INVALID);
 }
 
 int main(int argc, char *argv[]) {
