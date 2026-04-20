@@ -32,17 +32,17 @@ void debug_print(nk_buf_reader *r) {
             fprintf(stderr, ", ");
         }
     }
-    fprintf(stderr, "] (0, %d, %d)\n", r->newl ? (int)(r->newl - r->buf) : -1,
-            (int)VALID_LEN(r));
+    fprintf(stderr, "] (newl=\x1b[33m%d\x1b[m, valid_len=\x1b[32m%d\x1b[m)\n",
+            r->newl ? (int)(r->newl - r->buf) : -1, (int)VALID_LEN(r));
 }
 
 inline int nk_buf_reader_bytes_to_read(nk_buf_reader *r) {
-    // Say we have a buffer of length 16, and the `end` points to
-    // index 6 (valid indices are 0..=15). Then we can only afford to read 9
-    // bytes (the 9 being 6..=14) because we need to set buf[15] to the NUL
-    // byte.
+    //  0   1   2   3   4   5   6   7   8   9
+    // Consider a buffer of length 10, and the `end` points to index 4 (i.e.: a
+    // VALID_LEN of 4). Then we can only afford to read 5 bytes (the 5 being
+    // 4..=8) because we need to keep buf[9] as the NUL byte.
     //
-    // That arithmetic, 9 = 16 - 6 - 1, leads us here:
+    // That arithmetic, 5 = 10 - 4 - 1, leads us here:
     return r->len - VALID_LEN(r) - 1;
 
     // Note that this function returns 0 if and only if `end` points to
@@ -156,7 +156,7 @@ inline int nk_buf_reader_append_data(nk_buf_reader *r) {
     case -1: // An error occured in `read()`. See the `errno` variable.
         return NK_BUFREAD_IO_ERROR;
     default: // Successful read.
-        r->end += n;
+        *(r->end += n) = '\0';
         return n;
     }
 }
@@ -170,8 +170,11 @@ inline int nk_buf_reader_append_data(nk_buf_reader *r) {
 // (3.) Read more data from the file.
 // (4.) Look for the next newline character.
 //      (4a.) If one is found, then we NUL that and return.
-//      (4b.) Else, set B to the second-last value, and return.
+//      (4b.) Else, the buffer is too small. Send error.
 int nk_buf_reader_next(nk_buf_reader *r) {
+    if (!r->end) {
+        return NK_BUFREAD_INVALID;
+    }
     int n;
 
     nklog_trace("Call next()");
@@ -213,11 +216,15 @@ int nk_buf_reader_next(nk_buf_reader *r) {
         *r->newl = '\0';
         nklog_trace("\x1b[31mReturn\x1b[m {#3}");
         return NK_BUFREAD_OK;
-    } else {
-        r->newl = r->end - 1;
+    } else if (VALID_LEN(r) + 1 >= r->len) {
         nklog_trace("\x1b[31mReturn\x1b[m {#4}");
-        return NK_BUFREAD_OK;
+        *r->buf = '\0';
+        r->end = NULL;
+        return NK_BUFREAD_INSUFFICIENT_SPACE;
     }
+    nklog_trace("\x1b[31mReturn\x1b[m {#6}");
+    debug_print(r);
+    return NK_BUFREAD_OK;
 }
 
 #undef VALID_LEN

@@ -51,19 +51,23 @@ typedef enum {
      */
     NK_BUFREAD_OK = 0,
     /**
-     * The space allocated to the buffer is not enough to contain one of the
-     * lines that the buffer is used to read. You have to allocate more space.
-     */
-    NK_BUFREAD_INSUFFICIENT_SPACE = 1,
-    /**
      * There was an error returned when calling `read()`. Check `errno` for the
      * error that `read()` left behind.
      */
-    NK_BUFREAD_IO_ERROR = 2,
+    NK_BUFREAD_IO_ERROR = 1,
+    /**
+     * The space allocated to the buffer is not enough to contain one of the
+     * lines that the buffer is used to read. You have to allocate more space.
+     */
+    NK_BUFREAD_INSUFFICIENT_SPACE = 2,
     /**
      * The `nk_buf_reader` has reached the end of iteration safely.
      */
     NK_BUFREAD_ITER_OVER = 3,
+    /**
+     * Tried running a method on an invalid state of nk_buf_reader.
+     */
+    NK_BUFREAD_INVALID = 4,
 } nk_buf_reader_error_code;
 
 void nk_buf_reader_init(nk_buf_reader *);
