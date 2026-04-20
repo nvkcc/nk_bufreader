@@ -22,23 +22,51 @@
     ASSERT_LE(br.buf, br.end_of_buf);                                          \
     ASSERT_LT(br.end_of_buf, br.buf + br.len);
 
+void print_br(nk_buf_reader *r) {
+    std::cout << '[';
+    for (int i = 0; i < r->len; ++i) {
+        std::cout << (int)(r->buf[i]);
+        if (i + 1 < r->len) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "] (" << r->buf << ')' << std::endl;
+}
+
 TEST(BufRead, BasicAssertions) {
-    GTEST_SKIP();
+    PIPE_SETUP(4, "a\nbb\nccc");
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ(br.buf, "a");
+    print_br(&br);
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ(br.buf, "bb");
+    print_br(&br);
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ(br.buf, "ccc");
+    ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
+}
+
+TEST(BufRead, Counting) {
     PIPE_SETUP(10, "one\ntwo\nthree");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ(br.buf, "one");
+    print_br(&br);
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ(br.buf, "two");
+    print_br(&br);
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ(br.buf, "three");
     ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, BufferTooSmall) {
-    PIPE_SETUP(6, "gold\nsilver\nbronze");
+    PIPE_SETUP(7, "gold\nsilver\nbronze");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
     ASSERT_STREQ(br.buf, "gold");
-    ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ(br.buf, "silver");
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ(br.buf, "bronze");
 }
 
 TEST(BufRead, BufferExactlyEnough) {

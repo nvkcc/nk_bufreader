@@ -20,13 +20,13 @@ typedef struct nk_buf_reader {
     char *const buf;
     /// Byte buffer length.
     const int len;
-    /// Points to the first newline in the buffer. If this is NULL, then there
-    /// is no newline in the buffer.
+    /// Points to the first newline in the buffer. The _only_ time that this is
+    /// NULL is right after initialization.
     char *newl;
-    /// Points to the first invalid byte of the buffer. That is, the byte behind
-    /// this pointer is not read from `fd`. However, this pointer still points
-    /// to a valid place in the buffer's allocated memory. Should always be set
-    /// to the NUL byte.
+    /// Points to the first byte of the buffer that didn't come from the latest
+    /// `read()` call. Still must be a valid place in the buffer's allocated
+    /// memory. Should always be set to the NUL byte. Also the address that
+    /// `read()` starts sending data to.
     char *end_of_buf;
 } nk_buf_reader;
 
@@ -54,8 +54,8 @@ typedef enum {
 void nk_buf_reader_init(nk_buf_reader *);
 
 /// Assumes that everything from the front of `r.buf` until the first newline
-/// (or the end of the buffer, if there is no newline) is already consumed and
-/// hence can be overwritten.
+/// (the whole buffer, if there is no newline) is already consumed and hence can
+/// be overwritten.
 ///
 /// Reads data from `r`, and puts it at the front of the buffer `r.buf`. There
 /// is guaranteed to be a NUL character within the memory allocated to `r.buf`.
