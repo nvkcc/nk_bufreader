@@ -27,7 +27,7 @@ typedef struct nk_buf_reader {
     /// `read()` call. Still must be a valid place in the buffer's allocated
     /// memory. Should always be set to the NUL byte. Also the address that
     /// `read()` starts sending data to.
-    char *end_of_buf;
+    char *end;
 } nk_buf_reader;
 
 typedef enum {

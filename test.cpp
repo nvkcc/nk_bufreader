@@ -13,14 +13,14 @@
     nk_buf_reader_init(&br);
 
 // Pushes forward the reader, and asserts on the error code returned.
-// Also checks that the end_of_buf is
+// Also checks that the end is
 //  1. Set to the NUL character.
 //  2. Within bounds.
 #define ASSERT_NEXT(br, err_code)                                              \
     ASSERT_EQ(nk_buf_reader_next(&br), err_code);                              \
-    ASSERT_EQ(*br.end_of_buf, 0);                                              \
-    ASSERT_LE(br.buf, br.end_of_buf);                                          \
-    ASSERT_LT(br.end_of_buf, br.buf + br.len);
+    ASSERT_EQ(*br.end, 0);                                              \
+    ASSERT_LE(br.buf, br.end);                                          \
+    ASSERT_LT(br.end, br.buf + br.len);
 
 void print_br(nk_buf_reader *r) {
     std::cout << '[';
