@@ -46,7 +46,7 @@ inline int nk_bufreader_bytes_to_read(nk_bufreader *r) {
     return r->len - VALID_LEN(r) - 1;
 
     // Note that this function returns 0 if and only if `end` points to
-    // index 15 in the above scenario, which is when it is the last address in
+    // index 9 in the above scenario, which is when it is the last address in
     // the allocated buffer.
 }
 
