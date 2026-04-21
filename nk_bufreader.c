@@ -113,13 +113,17 @@ int nk_bufreader_next(nk_bufreader *r) {
     // (3.)
     nklog_trace("Call read(%d) at [%d]", nk_bufreader_bytes_to_read(r),
                 VALID_LEN(r));
-    if ((n = nk_bufreader_append_data(r)) <= 0) {
+    switch (n = read(r->fd, r->end, nk_bufreader_bytes_to_read(r))) {
+    case 0: // No bytes were read, and end of file is reached.
         if (r->end == r->buf) {
             nklog_trace("\x1b[31mReturn\x1b[m {#2}");
             return NK_BUFREAD_ITER_OVER;
         }
-        nklog_trace("\x1b[31mReturn\x1b[m {#3}");
-        return n;
+        return NK_BUFREAD_OK;
+    case -1: // An error occured in `read()`. See the `errno` variable.
+        return NK_BUFREAD_IO_ERROR;
+    default: // Successful read.
+        *(r->end += n) = '\0';
     }
     debug_print(r);
     nklog_trace("read() returned %d", n);
