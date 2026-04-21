@@ -17,7 +17,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nk_log)
 
 add_library(nk_bufreader nk_bufreader.c)
-target_include_directories(nk_bufreader PRIVATE include/)
+target_include_directories(nk_bufreader PUBLIC include/)
 target_link_libraries(nk_bufreader PRIVATE nk_log)
 
 if(BUILD_TESTS)
