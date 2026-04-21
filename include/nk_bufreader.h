@@ -36,8 +36,7 @@ typedef struct nk_bufreader {
     const unsigned int len;
     /// Byte buffer.
     char *const buf;
-    /// Points to the first newline in the buffer. The _only_ time that this is
-    /// NULL is right after initialization.
+    /// Points to the first newline in the buffer.
     char *newl;
     /// Points to the first byte of the buffer that didn't come from the latest
     /// `read()` call. Still must be a valid place in the buffer's allocated

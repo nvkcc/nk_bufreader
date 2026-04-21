@@ -65,7 +65,7 @@ int nk_bufreader_next(nk_bufreader *r) {
     if (!r->end) {
         return NK_BUFREAD_INVALID;
     }
-    if (!r->newl && r->end > r->buf) {
+    if (r->newl == r->end && r->end > r->buf) {
         return NK_BUFREAD_ITER_OVER;
     }
     int n;
@@ -127,6 +127,7 @@ int nk_bufreader_next(nk_bufreader *r) {
         nklog_trace("\x1b[31mReturn\x1b[m {#6}");
         return NK_BUFREAD_INSUFFICIENT_SPACE;
     }
+    r->newl = r->end;
     nklog_trace("\x1b[31mReturn\x1b[m {#7}");
     return NK_BUFREAD_OK;
 }
