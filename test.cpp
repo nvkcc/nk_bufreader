@@ -100,6 +100,13 @@ TEST(BufRead, BufferExactlyEnough) {
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_ITER_OVER);
 }
 
+TEST(BufRead, EmptyString) {
+    PIPE_SETUP(8, "");
+    ASSERT_NEXT(br, NK_BUFREAD_OK);
+    ASSERT_STREQ2(br, "");
+    ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
+}
+
 int main(int argc, char *argv[]) {
     // Override the default result printer.
     testing::TestEventListeners &listeners =
