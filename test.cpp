@@ -21,13 +21,10 @@
     ASSERT_EQ(nk_bufreader_next(&br), err_code);                               \
     if (br.end) {                                                              \
         ASSERT_EQ(*br.end, 0);                                                 \
+        ASSERT_EQ(*(br.buf + br.len - 1), 0);                                  \
         ASSERT_LE(br.buf, br.end);                                             \
         ASSERT_LT(br.end, br.buf + br.len);                                    \
     }
-
-#define ASSERT_STREQ2(BUFFER, VALUE)                                           \
-    std::cout << "assert eq: \x1b[33m\"" VALUE << "\"\x1b[m" << std::endl;     \
-    ASSERT_STREQ(BUFFER, VALUE);
 
 void print_br(nk_bufreader *r) {
     std::cout << '[';
@@ -43,52 +40,52 @@ void print_br(nk_bufreader *r) {
 TEST(BufRead, HelloWorld) {
     PIPE_SETUP(8, "hello\nworld");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "hello");
+    ASSERT_STREQ(br.buf, "hello");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "world");
+    ASSERT_STREQ(br.buf, "world");
 }
 
 TEST(BufRead, ABCs) {
     PIPE_SETUP(5, "a\nbb\nccc");
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "a");
+    ASSERT_STREQ(br.buf, "a");
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "bb");
+    ASSERT_STREQ(br.buf, "bb");
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(br.buf, "");
+    ASSERT_STREQ(br.buf, "");
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
 }
 
 TEST(BufRead, Counting) {
     PIPE_SETUP(10, "one\ntwo\nthree");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "one");
+    ASSERT_STREQ(br.buf, "one");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "two");
+    ASSERT_STREQ(br.buf, "two");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "three");
+    ASSERT_STREQ(br.buf, "three");
     ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, BufferTooSmall) {
     PIPE_SETUP(5, "aa\nbbb\ncccc");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "aa");
+    ASSERT_STREQ(br.buf, "aa");
     ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(br.buf, "");
+    ASSERT_STREQ(br.buf, "");
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
 }
 
 TEST(BufRead, BufferExactlyEnough) {
     PIPE_SETUP(8, "adieu\nocean\nsoare");
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "adieu");
+    ASSERT_STREQ(br.buf, "adieu");
     ASSERT_EQ(br.buf[5], '\0');
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "ocean");
+    ASSERT_STREQ(br.buf, "ocean");
     ASSERT_EQ(br.buf[5], '\0');
     ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br.buf, "soare");
+    ASSERT_STREQ(br.buf, "soare");
     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_ITER_OVER);
 }
 

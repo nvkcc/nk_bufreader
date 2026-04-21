@@ -73,12 +73,9 @@ typedef enum {
 
 void nk_bufreader_init(nk_bufreader *);
 
-/// Assumes that everything from the front of `r.buf` until the first newline
-/// (the whole buffer, if there is no newline) is already consumed and hence can
-/// be overwritten.
-///
-/// Reads data from `r`, and puts it at the front of the buffer `r.buf`. There
-/// is guaranteed to be a NUL character within the memory allocated to `r.buf`.
+/// Reads data from `r.fd`, and puts it at the front of the buffer `r.buf`.
+/// There is guaranteed to be a NUL character within the memory allocated to
+/// `r.buf`.
 ///
 /// Returns 0 upon success, and -1 if any error is encountered (including
 /// reaching end of file). `errno` would be set as per the result of the call to
