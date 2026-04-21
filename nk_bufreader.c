@@ -50,17 +50,6 @@ inline int nk_bufreader_bytes_to_read(nk_bufreader *r) {
     // the allocated buffer.
 }
 
-/// Shifts `r->newl` to `r->buf` and updates `r->end` to remain correct.
-void nk_bufreader_memmove(nk_bufreader *r) {
-    if (r->newl == r->buf) {
-        return;
-    }
-    // +1 to skip the newline character.
-    int diff = r->newl + 1 - r->buf;
-    memmove(r->buf, r->newl + 1, r->len - diff);
-    r->end -= diff;
-}
-
 /// Appends data to `r->end`. Works as long the position of `r->end` is valid.
 inline int nk_bufreader_append_data(nk_bufreader *r) {
     int n = read(r->fd, r->end, nk_bufreader_bytes_to_read(r));
@@ -103,8 +92,11 @@ int nk_bufreader_next(nk_bufreader *r) {
     }
     int n;
 
-    // (1.)
-    nk_bufreader_memmove(r);
+    // (1.) Shifts `r->newl` to `r->buf` and updates `r->end` to remain correct.
+    if (r->newl != r->buf) {
+        r->end -= (n = r->newl + 1 - r->buf); // +1 to skip the '\n' character.
+        memmove(r->buf, r->newl + 1, r->len - n);
+    }
     nklog_trace("Call memmove():");
     debug_print(r);
 
