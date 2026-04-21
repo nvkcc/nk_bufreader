@@ -26,9 +26,10 @@ void nk_bufreader_init(nk_bufreader *r) {
                 fprintf(stderr, ", ");                                         \
             }                                                                  \
         }                                                                      \
-        fprintf(stderr,                                                        \
-                "] (newl=\x1b[33m%d\x1b[m, valid_len=\x1b[32m%d\x1b[m)\n",     \
-                r->newl ? (int)(r->newl - r->buf) : -1, (int)VALID_LEN(r));    \
+        fprintf(                                                               \
+            stderr,                                                            \
+            "] (newl=\x1b[33m%d\x1b[m, valid_len=\x1b[32m%d\x1b[m, n=%d)\n",   \
+            r->newl ? (int)(r->newl - r->buf) : -1, (int)VALID_LEN(r), n);     \
     }
 #else
 #define debug_print(r)
@@ -93,6 +94,7 @@ int nk_bufreader_next(nk_bufreader *r) {
     switch (n = read(r->fd, r->end, BYTES_TO_READ(r))) {
     case 0: // No bytes were read, and end of file is reached.
         if (r->end == r->buf) {
+            r->newl = r->end;
             nklog_trace("\x1b[31mReturn\x1b[m {#2}");
             return NK_BUFREAD_ITER_OVER;
         }
@@ -115,20 +117,21 @@ int nk_bufreader_next(nk_bufreader *r) {
         // the buffer length but be exactly 2 bytes longer than the longest line
         // to be read.
         if (r->newl + 2 == r->buf + r->len) {
-            *r->buf = '\0', r->end = NULL;
-            nklog_trace("\x1b[31mReturn\x1b[m {#4}");
+            *r->buf = '\0', r->end = NULL, r->newl = r->buf;
+            nklog_trace("\x1b[31mReturn\x1b[m {#3}");
             return NK_BUFREAD_INSUFFICIENT_SPACE;
         }
         *r->newl = '\0';
-        nklog_trace("\x1b[31mReturn\x1b[m {#5}");
+        nklog_trace("\x1b[31mReturn\x1b[m {#4}");
         return NK_BUFREAD_OK;
     } else if (VALID_LEN(r) + 1 >= r->len) {
-        *r->buf = '\0', r->end = NULL;
-        nklog_trace("\x1b[31mReturn\x1b[m {#6}");
+        *r->buf = '\0', r->end = NULL, r->newl = r->buf;
+        nklog_trace("\x1b[31mReturn\x1b[m {#5}");
         return NK_BUFREAD_INSUFFICIENT_SPACE;
     }
     r->newl = r->end;
-    nklog_trace("\x1b[31mReturn\x1b[m {#7}");
+    debug_print(r);
+    nklog_trace("\x1b[31mReturn\x1b[m {#6}");
     return NK_BUFREAD_OK;
 }
 
