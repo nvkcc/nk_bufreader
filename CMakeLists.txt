@@ -34,6 +34,3 @@ if(BUILD_TESTS)
   target_include_directories(nk_bufreader-test PRIVATE include/)
   target_link_libraries(nk_bufreader-test PRIVATE nk_log nk_test)
 endif()
-
-# Create compile_commands.json for clangd to latch on to.
-file(CREATE_LINK ${CMAKE_BINARY_DIR}/compile_commands.json compile_commands.json SYMBOLIC)
