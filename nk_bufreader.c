@@ -5,11 +5,12 @@
 #include <string.h>
 
 void nk_bufreader_init(nk_bufreader *r) {
-    // Initialize all three pointers to be the same.
-    r->newl = r->end = r->buf;
+    r->ptr = r->buf;
     // Set the last byte to NUL to prevent any case of overflow by string
     // reading. We shall never touch this byte again.
     *(r->buf + r->len - 1) = '\0';
+    nklog_trace("Set position[%d] to NUL", r->len - 1);
+    r->err = NK_BUFREAD_OK;
 }
 
 // Uncomment this line only in development. Remove it in production.
@@ -63,76 +64,46 @@ void nk_bufreader_init(nk_bufreader *r) {
 //
 
 int nk_bufreader_next(nk_bufreader *r) {
-    if (!r->end) {
-        return NK_BUFREAD_INVALID;
-    }
-    if (r->newl == r->end && r->end > r->buf) {
-        return NK_BUFREAD_ITER_OVER;
+    if (r->err != NK_BUFREAD_OK) {
+        nklog_trace("Return 0");
+        return r->err;
     }
     int n;
+    r->ptr = r->buf;
 
-    // (1.) Shifts `r->newl` to `r->buf` and updates `r->end` to remain correct.
-    if (r->newl != r->buf) {
-        r->end -= (n = r->newl + 1 - r->buf); // +1 to skip the '\n' character.
-        memmove(r->buf, r->newl + 1, r->len - n);
-    }
-    nklog_trace("Call memmove():");
-    debug_print(r);
-
-    // (2.)
-    r->newl = (char *)memchr(r->buf, '\n', sizeof(char) * VALID_LEN(r));
-    if (r->newl) {
-        *r->newl = '\0';
-        nklog_trace("\x1b[31mReturn\x1b[m {#1}");
-        return NK_BUFREAD_OK;
-    }
-    nklog_trace("\x1b[33m1st\x1b[m memchr('\\n', v.len=%d):", VALID_LEN(r));
-    debug_print(r);
-
-    // (3.)
-    nklog_trace("Call read(%d) at [%d]", BYTES_TO_READ(r), VALID_LEN(r));
-    switch (n = read(r->fd, r->end, BYTES_TO_READ(r))) {
-    case 0: // No bytes were read, and end of file is reached.
-        if (r->end == r->buf) {
-            r->newl = r->end;
-            nklog_trace("\x1b[31mReturn\x1b[m {#2}");
-            return NK_BUFREAD_ITER_OVER;
+    while (1) {
+        if (r->ptr + 1 == r->buf + r->len) {
+            nklog_trace("Return 1");
+            *r->buf = '\0';
+            return (r->err = NK_BUFREAD_INSUFFICIENT_SPACE);
         }
-        return NK_BUFREAD_OK;
-    case -1: // An error occured in `read()`. See the `errno` variable.
-        return NK_BUFREAD_IO_ERROR;
-    default: // Successful read.
-        *(r->end += n) = '\0';
-    }
-    debug_print(r);
-    nklog_trace("read() returned %d", n);
-
-    // (4.)
-    nklog_trace("\x1b[34m2nd\x1b[m memchr('\\n', v.len=%d):", VALID_LEN(r));
-    r->newl = (char *)memchr(r->buf, '\n', sizeof(char) * VALID_LEN(r));
-    debug_print(r);
-    if (r->newl) {
-        // Strictly speaking, this doesn't need to return the insufficient space
-        // error. However, we're trying to be consistent in the agreement that
-        // the buffer length but be exactly 2 bytes longer than the longest line
-        // to be read.
-        if (r->newl + 2 == r->buf + r->len) {
-            *r->buf = '\0', r->end = NULL, r->newl = r->buf;
-            nklog_trace("\x1b[31mReturn\x1b[m {#3}");
-            return NK_BUFREAD_INSUFFICIENT_SPACE;
+        nklog_trace("Reading to position[%d]", r->ptr - r->buf);
+        switch (read(r->fd, r->ptr, 1)) {
+        case 1:
+            if (*r->ptr == '\n') {
+                *(r->ptr + 1) = '\0';
+                return NK_BUFREAD_OK;
+            }
+            r->ptr++;
+            continue;
+        case 0:
+            r->err = NK_BUFREAD_ITER_OVER;
+            if (r->ptr > r->buf) {
+                *(r->ptr - 1) = '\n';
+                *r->ptr = '\0';
+                nklog_trace("Return 3");
+                return NK_BUFREAD_OK;
+            } else {
+                nklog_trace("Return 4");
+                return NK_BUFREAD_ITER_OVER;
+            }
+        case -1:
+            return NK_BUFREAD_IO_ERROR;
+        default:
+            nklog_error("Not supposed to be here");
+            return NK_BUFREAD_INVALID;
         }
-        *r->newl = '\0';
-        nklog_trace("\x1b[31mReturn\x1b[m {#4}");
-        return NK_BUFREAD_OK;
-    } else if (VALID_LEN(r) + 1 >= r->len) {
-        *r->buf = '\0', r->end = NULL, r->newl = r->buf;
-        nklog_trace("\x1b[31mReturn\x1b[m {#5}");
-        return NK_BUFREAD_INSUFFICIENT_SPACE;
     }
-    r->newl = r->end;
-    debug_print(r);
-    nklog_trace("\x1b[31mReturn\x1b[m {#6}");
-    return NK_BUFREAD_OK;
 }
 
 #undef VALID_LEN

@@ -7,6 +7,31 @@
 extern "C" {
 #endif
 
+typedef enum {
+    /**
+     * No error occurred; the call was successful.
+     */
+    NK_BUFREAD_OK = 0,
+    /**
+     * There was an error returned when calling `read()`. Check `errno` for the
+     * error that `read()` left behind.
+     */
+    NK_BUFREAD_IO_ERROR = 1,
+    /**
+     * The space allocated to the buffer is not enough to contain one of the
+     * lines that the buffer is used to read. You have to allocate more space.
+     */
+    NK_BUFREAD_INSUFFICIENT_SPACE = 2,
+    /**
+     * The `nk_bufreader` has reached the end of iteration safely.
+     */
+    NK_BUFREAD_ITER_OVER = 3,
+    /**
+     * Tried running a method on an invalid state of nk_bufreader.
+     */
+    NK_BUFREAD_INVALID = 4,
+} nk_bufreader_error_code;
+
 /// A buffered reader that reads line by line (delimited by '\n'). The buffer
 /// must be two bytes longer than the longest line to be read, since we
 /// guarantee that the buffer always contains the NUL byte. So one byte for the
@@ -37,38 +62,10 @@ typedef struct nk_bufreader {
     /// Byte buffer.
     char *const buf;
     /// Points to the first newline in the buffer.
-    char *newl;
-    /// Points to the first byte of the buffer that didn't come from the latest
-    /// `read()` call. Still must be a valid place in the buffer's allocated
-    /// memory. Should always be set to the NUL byte. Also the address that
-    /// `read()` starts sending data to.
-    char *end;
+    char *ptr;
+    /// Last ran error message.
+    nk_bufreader_error_code err;
 } nk_bufreader;
-
-typedef enum {
-    /**
-     * No error occurred; the call was successful.
-     */
-    NK_BUFREAD_OK = 0,
-    /**
-     * There was an error returned when calling `read()`. Check `errno` for the
-     * error that `read()` left behind.
-     */
-    NK_BUFREAD_IO_ERROR = 1,
-    /**
-     * The space allocated to the buffer is not enough to contain one of the
-     * lines that the buffer is used to read. You have to allocate more space.
-     */
-    NK_BUFREAD_INSUFFICIENT_SPACE = 2,
-    /**
-     * The `nk_bufreader` has reached the end of iteration safely.
-     */
-    NK_BUFREAD_ITER_OVER = 3,
-    /**
-     * Tried running a method on an invalid state of nk_bufreader.
-     */
-    NK_BUFREAD_INVALID = 4,
-} nk_bufreader_error_code;
 
 void nk_bufreader_init(nk_bufreader *);
 
