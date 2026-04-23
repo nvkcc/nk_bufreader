@@ -80,6 +80,7 @@ int nk_bufreader_next(nk_bufreader *r, int *len) {
     int n = nk_bufreader_read(r, bytes_to_read);
     if (n == -1) {
         *r->left = '\0';
+        *len = 0;
         return r->err = NK_BUFREAD_IO_ERROR;
     } else if (n == 0) {
         r->err = NK_BUFREAD_ITER_OVER;
@@ -87,13 +88,16 @@ int nk_bufreader_next(nk_bufreader *r, int *len) {
 
     if ((r->right = memchr(r->left, '\n', r->end - r->left))) {
         r->right++;
+        *len = r->right - r->left;
         return NK_BUFREAD_OK;
     } else {
         if (n == bytes_to_read && *(r->end - 1) != '\0') {
             *r->left = '\0';
+            *len = 0;
             return NK_BUFREAD_INSUFFICIENT_SPACE;
         }
         r->err = NK_BUFREAD_ITER_OVER;
+        *len = r->end - r->left - 1;
         return NK_BUFREAD_OK;
     }
 #undef REMAIN_B
