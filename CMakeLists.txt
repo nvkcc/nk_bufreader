@@ -15,7 +15,7 @@ if(BUILD_TESTS)
   FetchContent_Declare(
     nk_test
     GIT_REPOSITORY https://github.com/nvkcc/nk_test
-    GIT_TAG        ef1bdfe8e38d56da41cd922ad5a3f93934aaedb2
+    GIT_TAG        9b5e86dee066dfce8db73f007f68946adadbe74b
     DOWNLOAD_EXTRACT_TIMESTAMP false
   )
   FetchContent_MakeAvailable(nk_test)
