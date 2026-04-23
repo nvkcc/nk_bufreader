@@ -6,7 +6,7 @@
 
 void nk_bufreader_init(nk_bufreader *r) {
     // Initialize all three pointers to be the same.
-    r->newl = r->end = r->buf;
+    r->left = r->right = r->buf;
     // Set the last byte to NUL to prevent any case of overflow by string
     // reading. We shall never touch this byte again.
     *(r->buf + r->len - 1) = '\0';
@@ -62,7 +62,14 @@ void nk_bufreader_init(nk_bufreader *r) {
 
 //
 
-int nk_bufreader_next(nk_bufreader *r) {}
+int nk_bufreader_next(nk_bufreader *r) {
+#define REMAINING_BYTES(P) (r->len - (P - r->buf) - 1)
+    if (r->last_error_code != NK_BUFREAD_OK) {
+        return r->last_error_code;
+    }
+
+    return NK_BUFREAD_OK;
+}
 
 #undef VALID_LEN
 #undef BYTES_TO_READ
