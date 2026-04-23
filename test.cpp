@@ -61,37 +61,36 @@ TEST(BufRead, TwoLiner) {
     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
 }
 
-// TEST(BufRead, ABCs) {
-//     PIPE_SETUP(5, "a\nbb\nccc");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "a");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "bb");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "ccc");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
-// }
-//
-// TEST(BufRead, Counting) {
-//     PIPE_SETUP(10, "one\ntwo\nthree");
-//     ASSERT_NEXT(r, NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "one");
-//     ASSERT_NEXT(r, NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "two");
-//     ASSERT_NEXT(r, NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "three");
-//     ASSERT_NEXT(r, NK_BUFREAD_ITER_OVER);
-// }
-//
-// TEST(BufRead, BufferTooSmall) {
-//     PIPE_SETUP(5, "aa\nbbb\ncccc");
-//     ASSERT_NEXT(r, NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "aa");
-//     ASSERT_NEXT(r, NK_BUFREAD_INSUFFICIENT_SPACE);
-//     ASSERT_STREQ2(r, "");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_INVALID);
-// }
-//
+TEST(BufRead, ABCs) {
+    PIPE_SETUP(5, "a\nbb\nccc");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "a\n");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "bb\n");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "ccc");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
+}
+
+TEST(BufRead, Counting) {
+    PIPE_SETUP(10, "one\ntwo\nthree");
+    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "one\n");
+    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "two\n");
+    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "three");
+    ASSERT_NEXT(r, NK_BUFREAD_ITER_OVER);
+}
+
+TEST(BufRead, BufferTooSmall) {
+    PIPE_SETUP(4, "aa\nbbb\ncccc");
+    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "aa\n");
+    ASSERT_NEXT(r, NK_BUFREAD_INSUFFICIENT_SPACE);
+    // ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_INVALID);
+}
+
 // TEST(BufRead, BufferExactlyEnough) {
 //     PIPE_SETUP(8, "adieu\nocean\nsoare");
 //     ASSERT_NEXT(r, NK_BUFREAD_OK);

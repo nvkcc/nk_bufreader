@@ -26,7 +26,7 @@ void nk_bufreader_init(nk_bufreader *r) {
 #include <stdio.h>
 #define debug_print(msg, r)                                                    \
     {                                                                          \
-        fprintf(stderr, "inner (" msg ") [");                                  \
+        fprintf(stderr, "inner (" msg ", len=%d) [", r->len);                  \
         int i;                                                                 \
         for (i = 0; i < r->len; ++i) {                                         \
             fprintf(stderr, "%d", r->buf[i]);                                  \
@@ -70,7 +70,7 @@ void nk_bufreader_init(nk_bufreader *r) {
 
 /// Moves `r->left` to the front, and moves all other points accordingly.
 void nk_bufreader_shift(nk_bufreader *r) {
-    log_trace("memmove()");
+    log_trace("memmove(). [left=%d, end=%d]", I(r->left), I(r->end));
     memmove(r->buf, r->left, r->end - r->left);
     r->end -= r->left - r->buf;
     r->left = r->buf;
@@ -141,7 +141,7 @@ int nk_bufreader_next(nk_bufreader *r) {
     }
     L = R;
     debug_print("#1", r);
-    if ((R = memchr(L, '\n', REMAIN_B(L)))) {
+    if ((R = memchr(L, '\n', E - L))) {
         R++;
         log_trace("Return #1");
         debug_print("", r);
@@ -149,7 +149,7 @@ int nk_bufreader_next(nk_bufreader *r) {
     }
     nk_bufreader_shift(r);
     nk_bufreader_read(r);
-    if ((R = memchr(L, '\n', REMAIN_B(L)))) {
+    if ((R = memchr(L, '\n', E - L))) {
         R++;
         log_trace("Return #2");
         debug_print("", r);
