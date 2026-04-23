@@ -10,6 +10,10 @@
 
 #ifdef DEBUG_MODE
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -64,6 +68,10 @@ void log_log(int level, const char *file, int line, const char *fmt, ...);
 #define log_add_fp(...)
 #define log_log(...)
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

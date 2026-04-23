@@ -1,3 +1,5 @@
+#define DEBUG_MODE
+
 #include "nk_bufreader.h"
 #include "log.h"
 #include <string.h>
@@ -71,6 +73,7 @@ void nk_bufreader_shift(nk_bufreader *r) {
     log_trace("memmove()");
     memmove(r->buf, r->left, r->end - r->left);
     r->end -= r->left - r->buf;
+    r->left = r->buf;
     debug_print("After memmove", r);
 }
 
@@ -88,7 +91,9 @@ void nk_bufreader_read(nk_bufreader *r) {
         r->err = NK_BUFREAD_IO_ERROR;
         break;
     default:
+        log_trace("read() returned %d.", n);
         r->end += n;
+        debug_print("", r);
     }
 }
 
@@ -120,32 +125,39 @@ ALGORITHM
 // "*right" points to the byte after the first '\n' char.
 // "*end" points to the byte after the last char from `fd`.
 int nk_bufreader_next(nk_bufreader *r) {
+    log_trace("\x1b[33m--- Call next() ---\x1b[m");
     // If this reader already terminated before, then return that same error.
     if (r->err != NK_BUFREAD_OK) {
-        log_warn("Already terminated with [%d]", r->err);
+        log_trace("Already terminated with [%d]", r->err);
         return r->err;
     }
     if (R == NULL) {
         // Even after the previous iteration, we couldn't find any '\n' for
         // r->right to point to -> the '\n' to the left of r->left is the last
         // '\n'. End iteration.
-        log_warn("\x1b[31mReturn\x1b[m #1");
+        log_trace("\x1b[31mReturn\x1b[m #1");
+        debug_print("", r);
         return (r->err = NK_BUFREAD_ITER_OVER);
     }
     L = R;
     debug_print("#1", r);
     if ((R = memchr(L, '\n', REMAIN_B(L)))) {
-        log_warn("Return #1");
+        R++;
+        log_trace("Return #1");
+        debug_print("", r);
         return NK_BUFREAD_OK;
     }
     nk_bufreader_shift(r);
     nk_bufreader_read(r);
     if ((R = memchr(L, '\n', REMAIN_B(L)))) {
-        log_warn("Return #2");
+        R++;
+        log_trace("Return #2");
+        debug_print("", r);
         return NK_BUFREAD_OK;
     } else {
-        log_warn("Return #3");
         r->err = NK_BUFREAD_ITER_OVER;
+        log_trace("Return #3");
+        debug_print("", r);
         return NK_BUFREAD_OK;
     }
 }

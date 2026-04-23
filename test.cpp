@@ -1,3 +1,5 @@
+#define DEBUG_MODE
+
 #include "log.h"
 #include "nk_bufreader.h"
 #include <gmock/gmock.h>
@@ -104,11 +106,7 @@ TEST(BufRead, TwoLiner) {
 // }
 
 int main(int argc, char *argv[]) {
-    log_add_fp(stderr, TRACE);
-    log_set_level(TRACE);
-    log_set_quiet(0);
-    log_error("HEYYY");
-    return 0;
+    log_set_level(LOG_TRACE);
     // Override the default result printer.
     testing::TestEventListeners &listeners =
         testing::UnitTest::GetInstance()->listeners();
