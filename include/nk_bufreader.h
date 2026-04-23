@@ -74,14 +74,8 @@ typedef struct nk_bufreader {
 
 void nk_bufreader_init(nk_bufreader *);
 
-/// Reads data from `r.fd`, and puts it at the front of the buffer `r.buf`.
-/// There is guaranteed to be a NUL character within the memory allocated to
-/// `r.buf`.
-///
-/// Returns 0 upon success, and -1 if any error is encountered (including
-/// reaching end of file). `errno` would be set as per the result of the call to
-/// `read`.
-int nk_bufreader_next(nk_bufreader *r, int *len);
+/// Like fgets.
+char *nk_bufreader_next(nk_bufreader *, int *len, nk_bufreader_error_code *);
 
 #ifdef __cplusplus
 }

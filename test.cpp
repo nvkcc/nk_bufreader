@@ -8,19 +8,20 @@
 
 #define PIPE_SETUP(N, ...)                                                     \
     int __fd[2], len;                                                          \
+    nk_bufreader_error_code err;                                               \
     ASSERT_NE(pipe(__fd), -1) << "Failed to start pipe";                       \
     dprintf(__fd[1], __VA_ARGS__);                                             \
     write(__fd[1], "", 1);                                                     \
     close(__fd[1]);                                                            \
-    char __buf[N];                                                             \
+    char __buf[N], *ptr;                                                       \
     nk_bufreader r = {.fd = __fd[0], .len = N, .buf = __buf};                  \
     nk_bufreader_init(&r);
 
 // Asserts that the C-string when read from the front matches the test case, and
 // also that the length defined by r->newl is correct.
-#define ASSERT_STREQ2(r, test_case)                                            \
+#define ASSERT_STREQ2(result, test_case)                                       \
     ASSERT_EQ(len, sizeof(test_case) - 1);                                     \
-    ASSERT_THAT(r.left, ::testing::StartsWith(test_case));
+    ASSERT_THAT(result, ::testing::StartsWith(test_case));
 
 void print_br(nk_bufreader *r) {
     std::cout << '[';
@@ -33,70 +34,74 @@ void print_br(nk_bufreader *r) {
     std::cout << "]" << std::endl;
 }
 
+#define NK_BUFREAD_TEST(r, len, ERR)                                           \
+    ptr = nk_bufreader_next(&r, &len, &err);                                   \
+    ASSERT_EQ(err, ERR);
+
 TEST(BufRead, EmptyString) {
     PIPE_SETUP(8, "");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_ITER_OVER);
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, OneLiner) {
     PIPE_SETUP(8, "hello");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "hello");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_ITER_OVER);
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "hello");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, TwoLiner) {
     PIPE_SETUP(8, "hello\nworld");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "hello\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "world");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_ITER_OVER);
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "hello\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "world");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, ABCs) {
     PIPE_SETUP(5, "a\nbb\nccc");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "a\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "bb\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "ccc");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_ITER_OVER);
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "a\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "bb\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "ccc");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, Counting) {
     PIPE_SETUP(10, "one\ntwo\nthree");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "one\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "two\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "three");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_ITER_OVER);
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "one\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "two\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "three");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, BufferTooSmall) {
     PIPE_SETUP(5, "aa\nbbb\ncccc");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "aa\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "bbb\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(r, "");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "aa\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "bbb\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_INSUFFICIENT_SPACE);
+    ASSERT_EQ(ptr, nullptr);
 }
 
 TEST(BufRead, BufferExactlyEnough) {
     PIPE_SETUP(7, "adieu\nocean\nsoare");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "adieu\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "ocean\n");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_OK);
-    ASSERT_STREQ2(r, "soare");
-    ASSERT_EQ(nk_bufreader_next(&r, &len), NK_BUFREAD_ITER_OVER);
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "adieu\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "ocean\n");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_OK);
+    ASSERT_STREQ2(ptr, "soare");
+    NK_BUFREAD_TEST(r, len, NK_BUFREAD_ITER_OVER);
 }
 
 int main(int argc, char *argv[]) {

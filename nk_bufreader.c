@@ -55,25 +55,29 @@ int nk_bufreader_read(nk_bufreader *r, int bytes_to_read) {
     return n;
 }
 
-int nk_bufreader_next(nk_bufreader *r, int *len) {
+char *nk_bufreader_next(nk_bufreader *r, int *len,
+                        nk_bufreader_error_code *err) {
 #define REMAIN_B(P) (r->len - (P - r->buf) - 1)
     // If this reader already terminated before, then return that same error.
     if (r->err != NK_BUFREAD_OK) {
         *len = 0;
-        return r->err;
+        *err = r->err;
+        return NULL;
     }
     if (r->right == NULL) {
         // Even after the previous iteration, we couldn't find any '\n' for
         // r->right to point to -> the '\n' to the left of r->left is the last
         // '\n'. End iteration.
         *len = 0;
-        return (r->err = NK_BUFREAD_ITER_OVER);
+        *err = r->err = NK_BUFREAD_ITER_OVER;
+        return NULL;
     }
     r->left = r->right;
     if ((r->right = memchr(r->left, '\n', r->end - r->left))) {
         r->right++;
         *len = r->right - r->left;
-        return NK_BUFREAD_OK;
+        *err = NK_BUFREAD_OK;
+        return r->left;
     }
     nk_bufreader_shift(r);
     int bytes_to_read = REMAIN_B(r->end);
@@ -81,7 +85,8 @@ int nk_bufreader_next(nk_bufreader *r, int *len) {
     if (n == -1) {
         *r->left = '\0';
         *len = 0;
-        return r->err = NK_BUFREAD_IO_ERROR;
+        *err = r->err = NK_BUFREAD_IO_ERROR;
+        return NULL;
     } else if (n == 0) {
         r->err = NK_BUFREAD_ITER_OVER;
     }
@@ -89,16 +94,19 @@ int nk_bufreader_next(nk_bufreader *r, int *len) {
     if ((r->right = memchr(r->left, '\n', r->end - r->left))) {
         r->right++;
         *len = r->right - r->left;
-        return NK_BUFREAD_OK;
+        *err = NK_BUFREAD_OK;
+        return r->left;
     } else {
         if (n == bytes_to_read && *(r->end - 1) != '\0') {
             *r->left = '\0';
             *len = 0;
-            return NK_BUFREAD_INSUFFICIENT_SPACE;
+            *err = NK_BUFREAD_INSUFFICIENT_SPACE;
+            return NULL;
         }
         r->err = NK_BUFREAD_ITER_OVER;
         *len = r->end - r->left - 1;
-        return NK_BUFREAD_OK;
+        *err = NK_BUFREAD_OK;
+        return r->left;
     }
 #undef REMAIN_B
 }
