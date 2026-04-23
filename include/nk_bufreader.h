@@ -81,7 +81,7 @@ void nk_bufreader_init(nk_bufreader *);
 /// Returns 0 upon success, and -1 if any error is encountered (including
 /// reaching end of file). `errno` would be set as per the result of the call to
 /// `read`.
-int nk_bufreader_next(nk_bufreader *r);
+int nk_bufreader_next(nk_bufreader *r, int *len);
 
 #ifdef __cplusplus
 }

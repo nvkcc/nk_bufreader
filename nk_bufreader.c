@@ -55,21 +55,24 @@ int nk_bufreader_read(nk_bufreader *r, int bytes_to_read) {
     return n;
 }
 
-int nk_bufreader_next(nk_bufreader *r) {
+int nk_bufreader_next(nk_bufreader *r, int *len) {
 #define REMAIN_B(P) (r->len - (P - r->buf) - 1)
     // If this reader already terminated before, then return that same error.
     if (r->err != NK_BUFREAD_OK) {
+        *len = 0;
         return r->err;
     }
     if (r->right == NULL) {
         // Even after the previous iteration, we couldn't find any '\n' for
         // r->right to point to -> the '\n' to the left of r->left is the last
         // '\n'. End iteration.
+        *len = 0;
         return (r->err = NK_BUFREAD_ITER_OVER);
     }
     r->left = r->right;
     if ((r->right = memchr(r->left, '\n', r->end - r->left))) {
         r->right++;
+        *len = r->right - r->left;
         return NK_BUFREAD_OK;
     }
     nk_bufreader_shift(r);
