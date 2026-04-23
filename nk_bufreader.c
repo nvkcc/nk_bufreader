@@ -6,15 +6,16 @@
 
 void nk_bufreader_init(nk_bufreader *r) {
     // Initialize all three pointers to be the same.
-    r->left = r->right = r->buf;
+    r->left = r->right = r->end = r->buf;
     // Set the last byte to NUL to prevent any case of overflow by string
     // reading. We shall never touch this byte again.
     *(r->buf + r->len - 1) = '\0';
 }
 
 // Uncomment this line only in development. Remove it in production.
-// #define NK_BUFREAD_DEBUG_PRINT
+#define NK_BUFREAD_DEBUG_PRINT
 #ifdef NK_BUFREAD_DEBUG_PRINT
+#define I(P) (int)(P - r->buf)
 #include <stdio.h>
 #define debug_print(r)                                                         \
     {                                                                          \
@@ -26,10 +27,8 @@ void nk_bufreader_init(nk_bufreader *r) {
                 fprintf(stderr, ", ");                                         \
             }                                                                  \
         }                                                                      \
-        fprintf(                                                               \
-            stderr,                                                            \
-            "] (newl=\x1b[33m%d\x1b[m, valid_len=\x1b[32m%d\x1b[m, n=%d)\n",   \
-            r->newl ? (int)(r->newl - r->buf) : -1, (int)VALID_LEN(r), n);     \
+        fprintf(stderr, "] (%d, %d, %d)\n", I(r->left), I(r->right),           \
+                I(r->end));                                                    \
     }
 #else
 #define debug_print(r)
@@ -62,13 +61,63 @@ void nk_bufreader_init(nk_bufreader *r) {
 
 //
 
+/// Moves `r->left` to the front, and moves all other points accordingly.
+void nk_bufreader_shift(nk_bufreader *r) {
+    if (r->left >= r->end) {
+        return;
+    }
+    debug_print(r);
+    nklog_trace("memmove()");
+    memmove(r->buf, r->left, r->end - r->left);
+    debug_print(r);
+    r->end -= r->left - r->buf;
+}
+
+// "*left" points to the first byte to consume.
+// "*right" points to the byte after the first '\n' char.
+// "*end" points to the byte after the last char from `fd`.
 int nk_bufreader_next(nk_bufreader *r) {
+    nklog_trace("Call next()");
 #define REMAINING_BYTES(P) (r->len - (P - r->buf) - 1)
     if (r->last_error_code != NK_BUFREAD_OK) {
+        nklog_info("\x1b[31mReturn\x1b[m #0");
         return r->last_error_code;
     }
+    if (r->right == NULL) {
+        // This means that even after the previous iteration's read, we couldn't
+        // find any '\n' for r->right to go. Implies that the '\n' to the left
+        // of r->left was the last '\n'. End iteration.
+        nklog_info("\x1b[31mReturn\x1b[m #1");
+        return (r->last_error_code = NK_BUFREAD_ITER_OVER);
+    }
 
+    r->left = r->right + 1;
+    r->right = memchr(r->left, '\n', REMAINING_BYTES(r->left));
+    if (r->right == NULL) {
+        nk_bufreader_shift(r);
+        nklog_trace("Gonna \x1b[33mread\x1b[m %d bytes at [%d]",
+                    REMAINING_BYTES(r->end), I(r->end));
+        int n = read(r->fd, r->end, REMAINING_BYTES(r->end));
+        if (n == -1) {
+            return (r->last_error_code = NK_BUFREAD_IO_ERROR);
+        } else if (n == 0) {
+            return (r->last_error_code = NK_BUFREAD_ITER_OVER);
+        }
+        nklog_trace("End shift-right: %d -> %d", I(r->end), I(r->end + n));
+        r->end += n;
+        nklog_trace("read() returned: %d", n);
+        r->right = memchr(r->left, '\n', REMAINING_BYTES(r->left));
+        if (r->right == NULL) {
+            *r->end = '\0';
+            nklog_info("\x1b[31mReturn\x1b[m #2");
+            return NK_BUFREAD_OK;
+        }
+    }
+    // At this line, r->right should point to a '\n'.
+    *r->right = '\0';
+    nklog_info("\x1b[31mReturn\x1b[m #3");
     return NK_BUFREAD_OK;
+#undef REMAINING_BYTES
 }
 
 #undef VALID_LEN

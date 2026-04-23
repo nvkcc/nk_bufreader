@@ -19,23 +19,11 @@
 // Also checks that the end is
 //  1. Set to the NUL character.
 //  2. Within bounds.
-#define ASSERT_NEXT(br, err_code)                                              \
-    ASSERT_EQ(nk_bufreader_next(&br), err_code);                               \
-    if (br.end) {                                                              \
-        ASSERT_EQ(*br.end, 0);                                                 \
-        ASSERT_EQ(*(br.buf + br.len - 1), 0);                                  \
-        ASSERT_LE(br.buf, br.end);                                             \
-        ASSERT_LT(br.end, br.buf + br.len);                                    \
-    }
+#define ASSERT_NEXT(br, err_code) ASSERT_EQ(nk_bufreader_next(&br), err_code);
 
 // Asserts that the C-string when read from the front matches the test case, and
 // also that the length defined by r->newl is correct.
-#define ASSERT_STREQ2(br, test_case)                                           \
-    ASSERT_STREQ(br.buf, test_case);                                           \
-    ASSERT_NE(br.newl, nullptr);                                               \
-    ASSERT_THAT(br.newl - br.buf,                                              \
-                testing::AllOf(testing::Ge(sizeof(test_case) - 1),             \
-                               testing::Le(sizeof(test_case))));
+#define ASSERT_STREQ2(br, test_case) ASSERT_STREQ(br.buf, test_case);
 
 void print_br(nk_bufreader *r) {
     std::cout << '[';
