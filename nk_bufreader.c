@@ -79,22 +79,14 @@ void nk_bufreader_shift(nk_bufreader *r) {
 
 /// Reads as many bytes as we can into the buffer, while never touching the last
 /// byte to keep it set to NUL. Advances the `r->end` pointer if necessary.
-void nk_bufreader_read(nk_bufreader *r) {
+int nk_bufreader_read(nk_bufreader *r, int bytes_to_read) {
     int n;
-    switch ((n = read(r->fd, r->end, REMAIN_B(r->end)))) {
-    case 0:
-        log_trace("read() returned 0. Iteration over.");
-        r->err = NK_BUFREAD_ITER_OVER;
-        break;
-    case -1:
-        log_trace("read() returned -1. I/O error.");
-        r->err = NK_BUFREAD_IO_ERROR;
-        break;
-    default:
-        log_trace("read() returned %d.", n);
+    if ((n = read(r->fd, r->end, bytes_to_read)) > 0) {
+        log_trace("read(%d) returned %d.", bytes_to_read, n);
         r->end += n;
         debug_print("", r);
     }
+    return n;
 }
 
 /*
@@ -148,15 +140,29 @@ int nk_bufreader_next(nk_bufreader *r) {
         return NK_BUFREAD_OK;
     }
     nk_bufreader_shift(r);
-    nk_bufreader_read(r);
+    int bytes_to_read = REMAIN_B(r->end);
+    int n = nk_bufreader_read(r, bytes_to_read);
+    if (n == -1) {
+        *r->left = '\0';
+        return r->err = NK_BUFREAD_IO_ERROR;
+    } else if (n == 0) {
+        r->err = NK_BUFREAD_ITER_OVER;
+    }
+
     if ((R = memchr(L, '\n', E - L))) {
         R++;
         log_trace("Return #2");
         debug_print("", r);
         return NK_BUFREAD_OK;
     } else {
+        if (n == bytes_to_read && *(r->end - 1) != '\0') {
+            *r->left = '\0';
+            log_trace("Return #3");
+            debug_print("insuff", r);
+            return NK_BUFREAD_INSUFFICIENT_SPACE;
+        }
         r->err = NK_BUFREAD_ITER_OVER;
-        log_trace("Return #3");
+        log_trace("Return #4");
         debug_print("", r);
         return NK_BUFREAD_OK;
     }

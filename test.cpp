@@ -84,11 +84,13 @@ TEST(BufRead, Counting) {
 }
 
 TEST(BufRead, BufferTooSmall) {
-    PIPE_SETUP(4, "aa\nbbb\ncccc");
+    PIPE_SETUP(5, "aa\nbbb\ncccc");
     ASSERT_NEXT(r, NK_BUFREAD_OK);
     ASSERT_STREQ2(r, "aa\n");
+    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "bbb\n");
     ASSERT_NEXT(r, NK_BUFREAD_INSUFFICIENT_SPACE);
-    // ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_INVALID);
+    ASSERT_STREQ2(r, "");
 }
 
 // TEST(BufRead, BufferExactlyEnough) {
