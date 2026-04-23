@@ -39,26 +39,26 @@ void print_br(nk_bufreader *r) {
 
 TEST(BufRead, EmptyString) {
     PIPE_SETUP(8, "");
-    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
     ASSERT_STREQ2(r, "");
-    ASSERT_NEXT(r, NK_BUFREAD_ITER_OVER);
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
 }
 
 TEST(BufRead, OneLiner) {
     PIPE_SETUP(8, "hello");
-    ASSERT_NEXT(r, NK_BUFREAD_OK);
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
     ASSERT_STREQ2(r, "hello");
-    ASSERT_NEXT(r, NK_BUFREAD_ITER_OVER);
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
 }
 
-// TEST(BufRead, HelloWorld) {
-//     PIPE_SETUP(8, "hello\nworld");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "hello\n");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(r, "world\n");
-//     ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
-// }
+TEST(BufRead, TwoLiner) {
+    PIPE_SETUP(8, "hello\nworld");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "hello\n");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_OK);
+    ASSERT_STREQ2(r, "world");
+    ASSERT_EQ(nk_bufreader_next(&r), NK_BUFREAD_ITER_OVER);
+}
 
 // TEST(BufRead, ABCs) {
 //     PIPE_SETUP(5, "a\nbb\nccc");

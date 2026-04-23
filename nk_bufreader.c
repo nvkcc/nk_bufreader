@@ -102,6 +102,17 @@ r->end    The first invalid byte. Suitable as destination for read() calls.
 
 INVARIANTS
     1. Last byte in buffer should ALWAYS be zero.
+
+POLICIES
+    1. Only read more data when LEFT has nowhere to go.
+
+ALGORITHM
+    1. Try to advance LEFT to where RIGHT is.
+        If (found)
+            advance RIGHT (may be null).
+        Else
+            Gotta read more data.
+
  */
 
 // "*left" points to the first byte to consume.
@@ -126,8 +137,8 @@ int nk_bufreader_next(nk_bufreader *r) {
     nklog_trace("Call next()");
     debug_print(r);
 
+    // Handle first iteration separately for now.
     if (r->end == r->buf) {
-        // Currently on first iteration.
         nklog_trace("First iteration");
         nk_bufreader_read(r);
         RETURN_LAST_ERR_IF_FOUND;
@@ -140,11 +151,11 @@ int nk_bufreader_next(nk_bufreader *r) {
             nklog_info("\x1b[31mReturn\x1b[m #F1");
             return NK_BUFREAD_OK;
         }
-    } else {
-        nklog_trace("Non-first");
-        // Not on the first iteration.
-        r->left = r->right + 1;
     }
+
+    nklog_trace("Non-first");
+    // Not on the first iteration.
+    r->left = r->right + 1;
     r->right = memchr(r->left, '\n', REMAIN_B(r->left));
 
     if (r->right) {
@@ -154,8 +165,11 @@ int nk_bufreader_next(nk_bufreader *r) {
 
     if (r->right == NULL) {
         nklog_trace("No newlines found");
-        //     nk_bufreader_shift(r);
-        //     nk_bufreader_read(r);
+        debug_print(r);
+        nk_bufreader_shift(r);
+        nk_bufreader_read(r);
+        nklog_trace("(Shift + Read) complete");
+        debug_print(r);
         //     RETURN_LAST_ERR_IF_FOUND;
         //     r->right = memchr(r->left, '\n', REMAIN_B(r->left));
         //     if (r->right == NULL) {
