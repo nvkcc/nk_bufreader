@@ -6,17 +6,18 @@
 
 void nk_bufreader_init(nk_bufreader *r) {
     // Initialize all three pointers to be the same.
-    r->left = r->right = r->buf;
-    r->end = r->buf + 1;
+    r->left = r->right = r->end = r->buf;
     // Set the last byte to NUL to prevent any case of overflow by string
     // reading. We shall never touch this byte again.
     *(r->buf + r->len - 1) = '\0';
+    r->err = NK_BUFREAD_OK;
 }
 
 // Uncomment this line only in development. Remove it in production.
 #define NK_BUFREAD_DEBUG_PRINT
 #ifdef NK_BUFREAD_DEBUG_PRINT
 #define I(P) (int)(P - r->buf)
+#define REMAIN_B(P) (r->len - (P - r->buf) - 1)
 #include <stdio.h>
 #define debug_print(r)                                                         \
     {                                                                          \
@@ -74,53 +75,98 @@ void nk_bufreader_shift(nk_bufreader *r) {
     r->end -= r->left - r->buf;
 }
 
+/// Reads as many bytes as we can into the buffer, while never touching the last
+/// byte to keep it set to NUL. Advances the `r->end` pointer if necessary.
+inline void nk_bufreader_read(nk_bufreader *r) {
+    int n;
+    switch ((n = read(r->fd, r->end, REMAIN_B(r->end)))) {
+    case 0:
+        nklog_trace("read() returned 0. Iteration over.");
+        r->err = NK_BUFREAD_ITER_OVER;
+        break;
+    case -1:
+        nklog_trace("read() returned -1. I/O error.");
+        r->err = NK_BUFREAD_IO_ERROR;
+        break;
+    default:
+        r->end += n;
+    }
+}
+
+/*
+r->left   The byte that the previous consumption read from.
+r->right  The first '\n' byte to the left of `r->left`. NULL implies that there
+          are no '\n' bytes to the left of `r->left` in the buffer.
+r->end    The first invalid byte. Suitable as destination for read() calls.
+
+
+INVARIANTS
+    1. Last byte in buffer should ALWAYS be zero.
+ */
+
 // "*left" points to the first byte to consume.
 // "*right" points to the byte after the first '\n' char.
 // "*end" points to the byte after the last char from `fd`.
 int nk_bufreader_next(nk_bufreader *r) {
+    // If this reader already terminated before, then return that same error.
+#define RETURN_LAST_ERR_IF_FOUND                                               \
+    if (r->err != NK_BUFREAD_OK) {                                             \
+        nklog_info("\x1b[31mReturn last error code\x1b[m [%d]", r->err);       \
+        return r->err;                                                         \
+    }
+    RETURN_LAST_ERR_IF_FOUND;
+    if (r->right == NULL) {
+        // Even after the previous iteration, we couldn't find any '\n' for
+        // r->right to point to -> the '\n' to the left of r->left is the last
+        // '\n'. End iteration.
+        nklog_info("\x1b[31mReturn\x1b[m #1");
+        return (r->err = NK_BUFREAD_ITER_OVER);
+    }
+
     nklog_trace("Call next()");
     debug_print(r);
-#define REMAINING_BYTES(P) (r->len - (P - r->buf) - 1)
-    if (r->last_error_code != NK_BUFREAD_OK) {
-        nklog_info("\x1b[31mReturn\x1b[m #0");
-        return r->last_error_code;
-    }
-    if (r->right == NULL) {
-        // This means that even after the previous iteration's read, we couldn't
-        // find any '\n' for r->right to go. Implies that the '\n' to the left
-        // of r->left was the last '\n'. End iteration.
-        nklog_info("\x1b[31mReturn\x1b[m #1");
-        return (r->last_error_code = NK_BUFREAD_ITER_OVER);
-    }
 
-    r->left = r->right + 1;
-    r->right = memchr(r->left, '\n', REMAINING_BYTES(r->left));
-    if (r->right == NULL) {
-        nk_bufreader_shift(r);
-        nklog_trace("Gonna \x1b[33mread\x1b[m %d bytes at [%d]",
-                    REMAINING_BYTES(r->end), I(r->end));
-        int n = read(r->fd, r->end, REMAINING_BYTES(r->end));
-        if (n == -1) {
-            return (r->last_error_code = NK_BUFREAD_IO_ERROR);
-        } else if (n == 0) {
-            return (r->last_error_code = NK_BUFREAD_ITER_OVER);
-        }
-        nklog_trace("End shift-right: %d -> %d", I(r->end), I(r->end + n));
-        r->end += n;
-        nklog_trace("read() returned: %d", n);
-        r->right = memchr(r->left, '\n', REMAINING_BYTES(r->left));
+    if (r->end == r->buf) {
+        // Currently on first iteration.
+        nklog_trace("First iteration");
+        nk_bufreader_read(r);
+        RETURN_LAST_ERR_IF_FOUND;
+        r->right = memchr(r->left, '\n', REMAIN_B(r->left));
         if (r->right == NULL) {
-            *r->end = '\0';
-            nklog_info("\x1b[31mReturn\x1b[m #2");
+            nklog_info("\x1b[31mReturn\x1b[m #F0");
+            r->err = NK_BUFREAD_ITER_OVER;
+            return NK_BUFREAD_OK;
+        } else {
+            nklog_info("\x1b[31mReturn\x1b[m #F1");
             return NK_BUFREAD_OK;
         }
+    } else {
+        nklog_trace("Non-first");
+        // Not on the first iteration.
+        r->left = r->right + 1;
     }
-    // At this line, r->right should point to a '\n'.
-    *r->right = '\0';
-    nklog_info("\x1b[31mReturn\x1b[m #3");
-    return NK_BUFREAD_OK;
-#undef REMAINING_BYTES
-}
+    r->right = memchr(r->left, '\n', REMAIN_B(r->left));
 
-#undef VALID_LEN
-#undef BYTES_TO_READ
+    if (r->right) {
+        nklog_info("\x1b[31mReturn\x1b[m #2");
+        return NK_BUFREAD_OK;
+    }
+
+    if (r->right == NULL) {
+        nklog_trace("No newlines found");
+        //     nk_bufreader_shift(r);
+        //     nk_bufreader_read(r);
+        //     RETURN_LAST_ERR_IF_FOUND;
+        //     r->right = memchr(r->left, '\n', REMAIN_B(r->left));
+        //     if (r->right == NULL) {
+        //         *r->end = '\0';
+        //         nklog_info("\x1b[31mReturn\x1b[m #4");
+        //         return NK_BUFREAD_OK;
+        //     }
+    }
+    return NK_BUFREAD_OK;
+    // // At this line, r->right should point to a '\n'.
+    // // *r->right = '\0';
+    // nklog_info("\x1b[31mReturn\x1b[m #5");
+    // return NK_BUFREAD_OK;
+}

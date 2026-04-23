@@ -62,7 +62,7 @@ typedef struct nk_bufreader {
     /// Byte buffer.
     char *const buf;
     char *left, *right, *end;
-    nk_bufreader_error_code last_error_code;
+    nk_bufreader_error_code err;
 } nk_bufreader;
 
 void nk_bufreader_init(nk_bufreader *);
