@@ -6,7 +6,8 @@
 
 void nk_bufreader_init(nk_bufreader *r) {
     // Initialize all three pointers to be the same.
-    r->left = r->right = r->end = r->buf;
+    r->left = r->right = r->buf;
+    r->end = r->buf + 1;
     // Set the last byte to NUL to prevent any case of overflow by string
     // reading. We shall never touch this byte again.
     *(r->buf + r->len - 1) = '\0';
@@ -78,6 +79,7 @@ void nk_bufreader_shift(nk_bufreader *r) {
 // "*end" points to the byte after the last char from `fd`.
 int nk_bufreader_next(nk_bufreader *r) {
     nklog_trace("Call next()");
+    debug_print(r);
 #define REMAINING_BYTES(P) (r->len - (P - r->buf) - 1)
     if (r->last_error_code != NK_BUFREAD_OK) {
         nklog_info("\x1b[31mReturn\x1b[m #0");
