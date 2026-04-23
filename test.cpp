@@ -44,17 +44,17 @@ TEST(BufRead, HelloWorld) {
     ASSERT_STREQ2(br, "world");
 }
 
-// TEST(BufRead, ABCs) {
-//     PIPE_SETUP(5, "a\nbb\nccc");
-//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(br, "a");
-//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
-//     ASSERT_STREQ2(br, "bb");
-//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INSUFFICIENT_SPACE);
-//     ASSERT_STREQ2(br, "");
-//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
-// }
-//
+TEST(BufRead, ABCs) {
+    PIPE_SETUP(5, "a\nbb\nccc");
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
+    ASSERT_STREQ2(br, "a");
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
+    ASSERT_STREQ2(br, "bb");
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
+    ASSERT_STREQ2(br, "ccc");
+    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_ITER_OVER);
+}
+
 // TEST(BufRead, Counting) {
 //     PIPE_SETUP(10, "one\ntwo\nthree");
 //     ASSERT_NEXT(br, NK_BUFREAD_OK);
