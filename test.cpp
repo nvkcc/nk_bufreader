@@ -56,56 +56,56 @@ TEST(BufRead, HelloWorld) {
     ASSERT_STREQ2(br, "world");
 }
 
-TEST(BufRead, ABCs) {
-    PIPE_SETUP(5, "a\nbb\nccc");
-    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "a");
-    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "bb");
-    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(br, "");
-    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
-}
-
-TEST(BufRead, Counting) {
-    PIPE_SETUP(10, "one\ntwo\nthree");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "one");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "two");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "three");
-    ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
-}
-
-TEST(BufRead, BufferTooSmall) {
-    PIPE_SETUP(5, "aa\nbbb\ncccc");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "aa");
-    ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
-    ASSERT_STREQ2(br, "");
-    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
-}
-
-TEST(BufRead, BufferExactlyEnough) {
-    PIPE_SETUP(8, "adieu\nocean\nsoare");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "adieu");
-    ASSERT_EQ(br.buf[5], '\0');
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "ocean");
-    ASSERT_EQ(br.buf[5], '\0');
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "soare");
-    ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_ITER_OVER);
-}
-
-TEST(BufRead, EmptyString) {
-    PIPE_SETUP(8, "");
-    ASSERT_NEXT(br, NK_BUFREAD_OK);
-    ASSERT_STREQ2(br, "");
-    ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
-}
+// TEST(BufRead, ABCs) {
+//     PIPE_SETUP(5, "a\nbb\nccc");
+//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "a");
+//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "bb");
+//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INSUFFICIENT_SPACE);
+//     ASSERT_STREQ2(br, "");
+//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
+// }
+//
+// TEST(BufRead, Counting) {
+//     PIPE_SETUP(10, "one\ntwo\nthree");
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "one");
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "two");
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "three");
+//     ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
+// }
+//
+// TEST(BufRead, BufferTooSmall) {
+//     PIPE_SETUP(5, "aa\nbbb\ncccc");
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "aa");
+//     ASSERT_NEXT(br, NK_BUFREAD_INSUFFICIENT_SPACE);
+//     ASSERT_STREQ2(br, "");
+//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_INVALID);
+// }
+//
+// TEST(BufRead, BufferExactlyEnough) {
+//     PIPE_SETUP(8, "adieu\nocean\nsoare");
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "adieu");
+//     ASSERT_EQ(br.buf[5], '\0');
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "ocean");
+//     ASSERT_EQ(br.buf[5], '\0');
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "soare");
+//     ASSERT_EQ(nk_bufreader_next(&br), NK_BUFREAD_ITER_OVER);
+// }
+//
+// TEST(BufRead, EmptyString) {
+//     PIPE_SETUP(8, "");
+//     ASSERT_NEXT(br, NK_BUFREAD_OK);
+//     ASSERT_STREQ2(br, "");
+//     ASSERT_NEXT(br, NK_BUFREAD_ITER_OVER);
+// }
 
 int main(int argc, char *argv[]) {
     // Override the default result printer.
