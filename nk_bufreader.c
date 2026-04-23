@@ -55,32 +55,6 @@ int nk_bufreader_read(nk_bufreader *r, int bytes_to_read) {
     return n;
 }
 
-/*
-L   The byte that the previous consumption read from.
-R   The byte to the right of the first '\n' after L. Minimally L + 1.
-    NULL implies that there are no '\n' to the left of L in the buffer.
-E   The first invalid byte. Suitable as destination for read() calls.
-
-INVARIANTS
-    1. Last byte in buffer should ALWAYS be zero.
-
-POLICIES
-    1. Only read more data when LEFT has nowhere to go.
-
-ALGORITHM
-    1.  If RIGHT is NULL, then the entire buffer was consumed the last
-        iteration. Return NK_BUFREAD_ITER_OVER.
-    2.  Advance LEFT to where RIGHT is.
-    3.  Advance RIGHT to next '\n' char.
-        If (found)
-            Return
-        Else
-            Shift left and read more data, and try to advance again.
- */
-
-// "*left" points to the first byte to consume.
-// "*right" points to the byte after the first '\n' char.
-// "*end" points to the byte after the last char from `fd`.
 int nk_bufreader_next(nk_bufreader *r) {
 #define REMAIN_B(P) (r->len - (P - r->buf) - 1)
     // If this reader already terminated before, then return that same error.

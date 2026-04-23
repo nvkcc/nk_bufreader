@@ -61,7 +61,14 @@ typedef struct nk_bufreader {
     const unsigned int len;
     /// Byte buffer.
     char *const buf;
-    char *left, *right, *end;
+    /// The byte from which to start reading.
+    char *left;
+    /// The byte after the first newline. Minimally = .left + 1. NULL implies
+    /// that there are no '\n' to the left of .left in the buffer.
+    char *right;
+    /// The first invalid byte (still within bounds). Suitable as destination
+    /// for read() calls.
+    char *end;
     nk_bufreader_error_code err;
 } nk_bufreader;
 
